@@ -1,0 +1,146 @@
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+
+  h4 {
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0;
+  }
+
+  p {
+    font-size: 13px;
+    color: #666;
+    margin: 2px 0 0;
+  }
+}
+
+.form-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #666;
+}
+
+.event-card {
+  transition: box-shadow 0.2s;
+
+  &:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+}
+
+.event-header {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.event-date-badge {
+  width: 52px;
+  height: 56px;
+  background: #fce4ec;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.event-month {
+  font-size: 11px;
+  font-weight: 700;
+  color: #cc1016;
+  text-transform: uppercase;
+}
+
+.event-day {
+  font-size: 20px;
+  font-weight: 700;
+  color: #191919;
+  line-height: 1;
+}
+
+.event-info {
+  flex: 1;
+}
+
+.event-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #191919;
+  margin: 0 0 6px;
+}
+
+.event-meta {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: #666;
+
+  span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+}
+
+.event-status {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+
+  &.upcoming {
+    background: #e8f5e9;
+    color: #057642;
+  }
+
+  &.past {
+    background: #f5f5f5;
+    color: #999;
+  }
+}
+
+.event-description {
+  font-size: 14px;
+  color: #333;
+  margin: 14px 0;
+  line-height: 1.5;
+}
+
+.event-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: #999;
+  padding-top: 10px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.event-creator {
+  font-weight: 500;
+}
+
+.event-capacity {
+  background: #f0f0f0;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+@media (max-width: 576px) {
+  .page-header {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .event-meta {
+    flex-direction: column;
+    gap: 4px;
+  }
+}

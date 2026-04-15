@@ -1,0 +1,17 @@
+package com.campusconnect.enums;
+
+public enum Role {
+    PROGRAMMER_ANALYST_TRAINEE,
+    PROGRAMMER_ANALYST,
+    ASSOCIATE,
+    SENIOR_ASSOCIATE,
+    MANAGER,
+    SENIOR_MANAGER,
+    ASSOCIATE_DIRECTOR,
+    DIRECTOR,
+    SENIOR_DIRECTOR,
+    AVP,
+    VP,
+    SVP,
+    ADMIN
+}

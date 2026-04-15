@@ -1,0 +1,191 @@
+<div class="feed-container" *ngIf="!loading && community">
+
+  <!-- Banner with upload -->
+  <div class="card community-header-card">
+    <div class="community-banner" [ngStyle]="{'background-image': community.bannerUrl ? 'url(' + community.bannerUrl + ')' : 'linear-gradient(135deg, #7b2cbf, #3a0ca3)'}">
+      <label class="banner-upload-btn" *ngIf="isOwnerOrAdmin()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="white" viewBox="0 0 16 16"><path d="M15 12a1 1 0 01-1 1H2a1 1 0 01-1-1V6a1 1 0 011-1h1.172a3 3 0 002.12-.879l.83-.828A1 1 0 016.827 3h2.344a1 1 0 01.707.293l.828.828A3 3 0 0012.828 5H14a1 1 0 011 1z" /></svg>
+        Edit Cover
+        <input type="file" accept="image/*" (change)="onBannerUpload($event)" hidden>
+      </label>
+    </div>
+    <div class="card-body community-header-body">
+      <!-- Icon with upload -->
+      <div class="icon-wrapper">
+        <img [src]="community.iconUrl || getIcon(community.name)" class="community-header-icon">
+        <label class="icon-upload-btn" *ngIf="isOwnerOrAdmin()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="white" viewBox="0 0 16 16"><path d="M12.854 2.146a.5.5 0 010 .708l-9 9a.5.5 0 01-.708 0l-3-3a.5.5 0 11.708-.708L4 11.293l8.646-8.647a.5.5 0 01.708 0z" /></svg>
+          <input type="file" accept="image/*" (change)="onIconUpload($event)" hidden>
+        </label>
+      </div>
+      <div class="community-header-info">
+        <h3>{{ community.name }}</h3>
+        <p class="community-desc" *ngIf="community.description">{{ community.description }}</p>
+        <div class="community-meta">
+          <span>{{ community.memberCount }} members</span>
+          <span *ngIf="community.isPrivate"> · Private</span>
+          <span> · Created by {{ community.createdByName }}</span>
+        </div>
+      </div>
+      <div class="community-header-actions">
+        <button class="btn btn-primary" *ngIf="!community.isMember" (click)="join()">Join</button>
+        <ng-container *ngIf="community.isMember">
+          <button class="btn btn-outline-primary btn-sm" (click)="openInvite()">Invite</button>
+          <!-- Three dot menu -->
+          <div class="settings-dropdown-wrapper">
+            <button class="btn-dots" (click)="showSettingsMenu = !showSettingsMenu">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#666" viewBox="0 0 16 16">
+                <path d="M3 9.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm5 0a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm5 0a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" />
+              </svg>
+            </button>
+            <div class="settings-menu" *ngIf="showSettingsMenu">
+              <button (click)="loadMembers(); showSettingsMenu = false">Members</button>
+              <button *ngIf="isOwnerOrAdmin()" (click)="showSettings = true; showSettingsMenu = false">Settings</button>
+              <button *ngIf="community.memberRole !== 'OWNER'" (click)="leave(); showSettingsMenu = false" class="text-danger">Leave Community</button>
+              <button *ngIf="community.memberRole === 'OWNER'" (click)="deleteCommunity(); showSettingsMenu = false" class="text-danger">Delete Community</button>
+            </div>
+          </div>
+        </ng-container>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs-bar" *ngIf="community.isMember">
+    <button [class.active]="activeTab === 'posts'" (click)="activeTab = 'posts'">Posts</button>
+    <button [class.active]="activeTab === 'about'" (click)="activeTab = 'about'">About</button>
+  </div>
+
+  <!-- About Tab -->
+  <div *ngIf="activeTab === 'about'" class="card">
+    <div class="card-body">
+      <h5 style="margin-bottom: 12px;">About {{ community.name }}</h5>
+      <p style="font-size: 14px; color: #666;">{{ community.description || 'No description yet.' }}</p>
+      <div class="separator"></div>
+      <div style="font-size: 13px; color: #999;">
+        <div>Created {{ community.createdAt | date:'mediumDate' }}</div>
+        <div>{{ community.memberCount }} members</div>
+        <div *ngIf="community.isPrivate">Private community — invite only</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Post — members only -->
+  <div class="card" *ngIf="community.isMember && activeTab === 'posts'">
+    <div class="card-body">
+      <div class="create-post-row">
+        <img [src]="getAvatar(auth.getCurrentUser()?.name || 'U')" class="avatar-sm">
+        <textarea [(ngModel)]="newPostContent" placeholder="Share with {{ community.name }}..." rows="2" class="form-control post-textarea"></textarea>
+      </div>
+      <!-- Media Preview -->
+      <div class="media-preview" *ngIf="imagePreview || videoPreview">
+        <button class="remove-media" (click)="removeMedia()">✕</button>
+        <img *ngIf="imagePreview" [src]="imagePreview" class="preview-img">
+        <video *ngIf="videoPreview" [src]="videoPreview" controls class="preview-vid"></video>
+      </div>
+      <div *ngIf="uploading" class="upload-status"><div class="spinner-border spinner-border-sm text-primary"></div> Uploading...</div>
+      <div class="create-post-footer">
+        <div class="media-btns">
+          <label class="media-btn"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="#378fe9" viewBox="0 0 24 24"><path d="M19 4H5a3 3 0 00-3 3v10a3 3 0 003 3h14a3 3 0 003-3V7a3 3 0 00-3-3zm1 13a1 1 0 01-.29.71L16 14l-2 2-6-6-4 4V7a1 1 0 011-1h14a1 1 0 011 1z" /></svg> Photo<input type="file" accept="image/*" (change)="onImageSelected($event)" hidden></label>
+          <label class="media-btn"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="#5f9b41" viewBox="0 0 24 24"><path d="M22 7l-5 3V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-3l5 3V7z" /></svg> Video<input type="file" accept="video/*" (change)="onVideoSelected($event)" hidden></label>
+        </div>
+        <button class="btn btn-primary btn-sm" (click)="createPost()" [disabled]="posting || (!newPostContent.trim() && !selectedImage && !selectedVideo)">
+          {{ posting ? 'Posting...' : 'Post' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Not member -->
+  <div class="card" *ngIf="!community.isMember">
+    <div class="card-body text-center" style="padding: 40px;">
+      <p style="color: #666;">Join this community to see posts and participate</p>
+      <button class="btn btn-primary mt-2" (click)="join()">Join {{ community.name }}</button>
+    </div>
+  </div>
+
+  <!-- Posts -->
+  <div *ngIf="activeTab === 'posts'">
+    <div class="community-post card" *ngFor="let post of posts; let i = index">
+      <div class="card-body">
+        <div class="post-row">
+          <div class="vote-column">
+            <button class="vote-btn" [class.active-up]="post.userVote === 1" (click)="vote(post, 1)"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M8 2l6 10H2z" /></svg></button>
+            <span class="vote-score" [class.positive]="post.score > 0" [class.negative]="post.score < 0">{{ post.score }}</span>
+            <button class="vote-btn" [class.active-down]="post.userVote === -1" (click)="vote(post, -1)"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M8 14l6-10H2z" /></svg></button>
+          </div>
+          <div class="post-body">
+            <div class="post-author">
+              <img [src]="post.authorProfilePic || getAvatar(post.authorName)" class="avatar-sm">
+              <a [routerLink]="['/profile', post.authorId]" class="author-link">{{ post.authorName }}</a>
+              <span class="post-time">· {{ timeAgo(post.createdAt) }}</span>
+              <button class="btn-icon-sm" *ngIf="post.authorId === currentUserId || isOwnerOrAdmin()" (click)="deletePost(post, i)">✕</button>
+            </div>
+            <a [routerLink]="['/communities', community.id, 'posts', post.id]" class="post-content-link">
+              <p class="post-text">{{ post.content }}</p>
+            </a>
+            <img *ngIf="post.imageUrl" [src]="post.imageUrl" class="post-media">
+            <video *ngIf="post.videoUrl" [src]="post.videoUrl" controls class="post-media"></video>
+            <div class="post-footer">
+              <a [routerLink]="['/communities', community.id, 'posts', post.id]" class="comment-link">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#666" viewBox="0 0 16 16"><path d="M14 1a1 1 0 011 1v8a1 1 0 01-1 1H4.414A2 2 0 003 11.586l-2 2V2a1 1 0 011-1z" /></svg>
+                {{ post.commentCount }} Comments
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="empty-state" *ngIf="posts.length === 0 && community.isMember"><p>No posts yet. Be the first!</p></div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" *ngIf="showSettings" (click)="showSettings = false">
+    <div class="modal-box" (click)="$event.stopPropagation()">
+      <div class="modal-header"><h5>Community Settings</h5><button class="close-btn" (click)="showSettings = false">✕</button></div>
+      <div class="modal-body">
+        <div class="mb-3"><label class="form-label">Name</label><input type="text" class="form-control" [(ngModel)]="editForm.name"></div>
+        <div class="mb-3"><label class="form-label">Description</label><textarea class="form-control" [(ngModel)]="editForm.description" rows="3"></textarea></div>
+        <div class="mb-3 form-check"><input type="checkbox" class="form-check-input" [(ngModel)]="editForm.isPrivate" id="privCheck"><label class="form-check-label" for="privCheck">Private (invite only)</label></div>
+        <button class="btn btn-primary" (click)="saveSettings()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Members Modal -->
+  <div class="modal-overlay" *ngIf="showMembers" (click)="showMembers = false">
+    <div class="modal-box" (click)="$event.stopPropagation()">
+      <div class="modal-header"><h5>Members ({{ community.memberCount }})</h5><button class="close-btn" (click)="showMembers = false">✕</button></div>
+      <div class="modal-body">
+        <div class="member-item" *ngFor="let m of members">
+          <img [src]="m.profilePicUrl || getAvatar(m.name)" class="avatar-sm">
+          <div class="member-info">
+            <a [routerLink]="['/profile', m.id]" class="member-name" (click)="showMembers = false">{{ m.name }}</a>
+            <span class="member-role-badge" [ngClass]="m.role?.toLowerCase()">{{ m.role }}</span>
+          </div>
+          <div class="member-actions" *ngIf="community.memberRole === 'OWNER' && m.role !== 'OWNER'">
+            <button class="btn btn-light btn-sm" (click)="promoteMember(m)">{{ m.role === 'ADMIN' ? 'Demote' : 'Make Admin' }}</button>
+            <button class="btn btn-light btn-sm text-danger" (click)="removeMember(m)">Remove</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Invite Modal -->
+  <div class="modal-overlay" *ngIf="showInviteModal" (click)="showInviteModal = false">
+    <div class="modal-box" (click)="$event.stopPropagation()">
+      <div class="modal-header"><h5>Invite to {{ community.name }}</h5><button class="close-btn" (click)="showInviteModal = false">✕</button></div>
+      <div class="modal-body">
+        <div class="member-item" *ngFor="let conn of connections">
+          <img [src]="conn.userProfilePic || getAvatar(conn.userName)" class="avatar-sm">
+          <div class="member-info"><div class="member-name">{{ conn.userName }}</div><div style="font-size:12px;color:#999">{{ conn.userPosition }}</div></div>
+          <button class="btn btn-primary btn-sm" (click)="invite(conn)" [disabled]="inviting">Invite</button>
+        </div>
+        <div class="text-center p-3" *ngIf="connections.length === 0" style="color:#999"><p>No connections to invite</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="text-center p-5" *ngIf="loading"><div class="spinner-border text-primary"></div></div>

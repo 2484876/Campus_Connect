@@ -1,0 +1,193 @@
+<div class="feed-container" *ngIf="!loading && user">
+
+  <div class="card profile-card">
+    <div class="profile-banner" [ngStyle]="{'background-image': user.bannerUrl ? 'url(' + user.bannerUrl + ')' : 'linear-gradient(135deg, #0a66c2 0%, #004182 100%)'}">
+      <label class="banner-edit-btn" *ngIf="isOwnProfile">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="white" viewBox="0 0 16 16"><path d="M15 12a1 1 0 01-1 1H2a1 1 0 01-1-1V6a1 1 0 011-1h1.172a3 3 0 002.12-.879l.83-.828A1 1 0 016.827 3h2.344a1 1 0 01.707.293l.828.828A3 3 0 0012.828 5H14a1 1 0 011 1z" /></svg>
+        <span *ngIf="!uploadingBanner">Edit cover</span>
+        <span *ngIf="uploadingBanner">Uploading...</span>
+        <input type="file" accept="image/*" (change)="onBannerSelected($event)" hidden>
+      </label>
+    </div>
+
+    <div class="card-body profile-body">
+      <div class="avatar-wrapper">
+        <img [src]="user.profilePicUrl || getAvatar(user.name)" class="avatar-lg profile-avatar">
+        <label class="avatar-upload-overlay" *ngIf="isOwnProfile">
+          <div class="camera-icon" *ngIf="!uploadingAvatar">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="white" viewBox="0 0 16 16"><path d="M15 12a1 1 0 01-1 1H2a1 1 0 01-1-1V6a1 1 0 011-1h1.172a3 3 0 002.12-.879l.83-.828A1 1 0 016.827 3h2.344a1 1 0 01.707.293l.828.828A3 3 0 0012.828 5H14a1 1 0 011 1zM2 4a2 2 0 00-2 2v6a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1.172a2 2 0 01-1.414-.586l-.828-.828A2 2 0 009.172 2H6.828a2 2 0 00-1.414.586l-.828.828A2 2 0 013.172 4z" /><path d="M8 11a2.5 2.5 0 110-5 2.5 2.5 0 010 5zm0 1a3.5 3.5 0 100-7 3.5 3.5 0 000 7z" /></svg>
+          </div>
+          <div class="spinner-border spinner-border-sm text-white" *ngIf="uploadingAvatar"></div>
+          <input type="file" accept="image/*" (change)="onAvatarSelected($event)" hidden>
+        </label>
+      </div>
+
+      <div class="profile-kebab" *ngIf="isOwnProfile">
+        <button class="kebab-btn" (click)="toggleProfileMenu()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M9.5 13a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0-5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0-5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+          </svg>
+        </button>
+        <div class="kebab-menu" *ngIf="profileMenuOpen">
+          <button class="kebab-item" (click)="openEditProfile()">Edit profile</button>
+        </div>
+      </div>
+
+      <div class="profile-actions" *ngIf="!isOwnProfile">
+        <button class="btn btn-primary" *ngIf="!user.connectionStatus" (click)="connect()">Connect</button>
+        <button class="btn btn-light" *ngIf="user.connectionStatus === 'PENDING'" disabled>Pending</button>
+        <button class="btn btn-outline-primary" *ngIf="user.connectionStatus === 'ACCEPTED'" (click)="message()">Message</button>
+        <span class="connected-badge" *ngIf="user.connectionStatus === 'ACCEPTED'">Connected</span>
+      </div>
+
+      <div class="profile-info">
+        <h2>{{ user.name }}</h2>
+        <span class="role-clickable" (click)="viewRole(user.role)">{{ getRoleLabel(user.role) }}</span>
+        <p class="profile-headline" *ngIf="user.position || user.department">
+          {{ user.position }}<span *ngIf="user.department"> · {{ user.department }}</span>
+        </p>
+        <p class="profile-bio" *ngIf="user.bio">{{ user.bio }}</p>
+        <p class="profile-email">{{ user.email }}</p>
+        <p class="profile-connections"><strong>{{ user.connectionCount }}</strong> connections</p>
+      </div>
+
+      <div class="profile-skills" *ngIf="user.skills && user.skills.length > 0">
+        <h6>Skills</h6>
+        <div class="skills-list">
+          <span class="skill-tag" *ngFor="let skill of user.skills">{{ skill }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" *ngIf="editing">
+    <div class="card-body">
+      <h5 class="mb-3">Edit Profile</h5>
+      <div class="mb-3"><label class="form-label">Name</label><input type="text" class="form-control" [(ngModel)]="editForm.name"></div>
+      <div class="row">
+        <div class="col-md-6 mb-3"><label class="form-label">Department</label><input type="text" class="form-control" [(ngModel)]="editForm.department"></div>
+        <div class="col-md-6 mb-3"><label class="form-label">Position</label><input type="text" class="form-control" [(ngModel)]="editForm.position"></div>
+      </div>
+      <div class="mb-3"><label class="form-label">Bio</label><textarea class="form-control" [(ngModel)]="editForm.bio" rows="3"></textarea></div>
+      <div class="mb-3"><label class="form-label">Phone</label><input type="text" class="form-control" [(ngModel)]="editForm.phone"></div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-primary" (click)="saveProfile()">Save Changes</button>
+        <button class="btn btn-outline-secondary" (click)="editing = false">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <div class="section-header-row">
+        <h5>Experience</h5>
+        <button class="btn btn-light btn-sm" *ngIf="isOwnProfile" (click)="showAddExperience = !showAddExperience">
+          {{ showAddExperience ? 'Cancel' : '+ Add' }}
+        </button>
+      </div>
+
+      <div class="exp-form" *ngIf="showAddExperience">
+        <div class="mb-2"><label class="form-label">Title *</label><input type="text" class="form-control" [(ngModel)]="expForm.title" placeholder="Senior Associate - Full Stack Developer"></div>
+        <div class="row">
+          <div class="col-6 mb-2">
+            <label class="form-label">Employment Type</label>
+            <select class="form-control" [(ngModel)]="expForm.employmentType">
+              <option>Full-time</option>
+              <option>Part-time</option>
+              <option>Internship</option>
+              <option>Contract</option>
+              <option>Freelance</option>
+            </select>
+          </div>
+          <div class="col-6 mb-2"><label class="form-label">Company</label><input type="text" class="form-control" [(ngModel)]="expForm.company" placeholder="Cognizant"></div>
+        </div>
+        <div class="mb-2"><label class="form-label">Location</label><input type="text" class="form-control" [(ngModel)]="expForm.location" placeholder="Chennai, India"></div>
+        <div class="row">
+          <div class="col-6 mb-2"><label class="form-label">Start Date *</label><input type="date" class="form-control" [(ngModel)]="expForm.startDate"></div>
+          <div class="col-6 mb-2"><label class="form-label">End Date</label><input type="date" class="form-control" [(ngModel)]="expForm.endDate" [disabled]="expForm.isCurrent"></div>
+        </div>
+        <div class="mb-2 form-check"><input type="checkbox" class="form-check-input" [(ngModel)]="expForm.isCurrent" id="currentCheck"><label class="form-check-label" for="currentCheck">I currently work here</label></div>
+        <div class="mb-3"><label class="form-label">Description</label><textarea class="form-control" [(ngModel)]="expForm.description" rows="2" placeholder="What did you do in this role?"></textarea></div>
+        <button class="btn btn-primary btn-sm" (click)="addExperience()" [disabled]="!expForm.title.trim() || !expForm.startDate">Save Experience</button>
+      </div>
+
+      <div class="experience-item" *ngFor="let exp of user.experiences; let i = index">
+        <div class="exp-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="#666" viewBox="0 0 16 16"><path d="M6.5 1A1.5 1.5 0 005 2.5V3H1.5A1.5 1.5 0 000 4.5v8A1.5 1.5 0 001.5 14h13a1.5 1.5 0 001.5-1.5v-8A1.5 1.5 0 0014.5 3H11v-.5A1.5 1.5 0 009.5 1h-3zm0 1h3a.5.5 0 01.5.5V3H6v-.5a.5.5 0 01.5-.5z" /></svg>
+        </div>
+        <div class="exp-details">
+          <div class="exp-title">{{ exp.title }}</div>
+          <div class="exp-company">{{ exp.company }} · {{ exp.employmentType }}</div>
+          <div class="exp-dates">
+            {{ formatDate(exp.startDate) }} — {{ exp.isCurrent ? 'Present' : formatDate(exp.endDate) }}
+          </div>
+          <div class="exp-location" *ngIf="exp.location">{{ exp.location }}</div>
+          <p class="exp-desc" *ngIf="exp.description">{{ exp.description }}</p>
+        </div>
+        <div class="exp-kebab" *ngIf="isOwnProfile">
+          <button class="kebab-btn" (click)="toggleExpMenu(i)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+              <path d="M9.5 13a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0-5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0-5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+            </svg>
+          </button>
+          <div class="kebab-menu" *ngIf="openExpMenuIndex === i">
+            <button class="kebab-item kebab-item--danger" (click)="deleteExperience(exp, i)">Delete</button>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="!user.experiences || user.experiences.length === 0" style="color: #999; font-size: 13px; padding: 12px 0;">
+        No experience added yet
+      </div>
+    </div>
+  </div>
+
+  <div class="section-header"><h5>Activity</h5><span class="post-count">{{ posts.length }} posts</span></div>
+
+  <div class="card post-card" *ngFor="let post of posts; let i = index">
+    <div class="card-body">
+      <div class="post-header">
+        <img [src]="post.authorProfilePic || getAvatar(post.authorName)" class="avatar">
+        <div class="post-author-info">
+          <a [routerLink]="['/profile', post.authorId]" class="author-name">{{ post.authorName }}</a>
+          <div class="author-headline">{{ post.authorPosition }} <span *ngIf="post.authorDepartment">· {{ post.authorDepartment }}</span></div>
+          <div class="time-ago">{{ timeAgo(post.createdAt) }}</div>
+        </div>
+      </div>
+      <p class="post-content">{{ post.content }}</p>
+      <img *ngIf="post.imageUrl" [src]="post.imageUrl" class="post-image">
+      <video *ngIf="post.videoUrl" [src]="post.videoUrl" controls class="post-video"></video>
+      <div class="post-stats" *ngIf="post.likeCount > 0 || post.commentCount > 0">
+        <span *ngIf="post.likeCount > 0">{{ post.likeCount }} likes</span>
+        <span *ngIf="post.commentCount > 0" class="clickable" (click)="toggleComments(post)">{{ post.commentCount }} comments</span>
+      </div>
+      <div class="separator"></div>
+      <div class="post-actions">
+        <button class="action-btn" [class.active]="post.likedByMe" (click)="toggleLike(post)"><span>{{ post.likedByMe ? 'Liked' : 'Like' }}</span></button>
+        <button class="action-btn" (click)="toggleComments(post)"><span>Comment</span></button>
+      </div>
+      <div class="comments-section" *ngIf="post.showComments">
+        <div class="comment-item" *ngFor="let c of post.recentComments">
+          <img [src]="c.authorProfilePic || getAvatar(c.authorName)" class="avatar-sm">
+          <div class="comment-bubble">
+            <a [routerLink]="['/profile', c.authorId]" class="comment-author">{{ c.authorName }}</a>
+            <p class="comment-text">{{ c.content }}</p>
+          </div>
+        </div>
+        <div class="add-comment">
+          <img [src]="getAvatar(currentUserName)" class="avatar-sm">
+          <div class="comment-input-wrapper">
+            <input [(ngModel)]="post.newComment" placeholder="Add a comment..." class="form-control comment-input" (keyup.enter)="addComment(post)">
+            <button class="btn-send" (click)="addComment(post)" [disabled]="!post.newComment?.trim()">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="#0a66c2" viewBox="0 0 16 16"><path d="M15.854.146a.5.5 0 01.11.54l-5.819 14.547a.75.75 0 01-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 01.124-1.33L15.314.037a.5.5 0 01.54.11z" /></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="empty-state" *ngIf="posts.length === 0"><p>No posts yet</p></div>
+</div>
+
+<div class="text-center p-5" *ngIf="loading"><div class="spinner-border text-primary"></div></div>

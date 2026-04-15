@@ -1,0 +1,104 @@
+<div class="feed-container">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <h4>Campus Events</h4>
+      <p>Discover what's happening on campus</p>
+    </div>
+    <button class="btn btn-primary" (click)="showCreate = !showCreate">
+      {{ showCreate ? 'Cancel' : '+ Create Event' }}
+    </button>
+  </div>
+
+  <!-- Create Event Form -->
+  <div class="card" *ngIf="showCreate">
+    <div class="card-body">
+      <h5 class="mb-3">Create New Event</h5>
+
+      <div class="mb-3">
+        <label class="form-label">Event Title *</label>
+        <input type="text" class="form-control" [(ngModel)]="form.title" placeholder="Tech Fest 2026">
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Description</label>
+        <textarea class="form-control" [(ngModel)]="form.description" rows="3" placeholder="Tell people about the event..."></textarea>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Date & Time *</label>
+          <input type="datetime-local" class="form-control" [(ngModel)]="form.eventDate">
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Location</label>
+          <input type="text" class="form-control" [(ngModel)]="form.location" placeholder="Main Auditorium">
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Max Participants (optional)</label>
+        <input type="number" class="form-control" [(ngModel)]="form.maxParticipants" placeholder="100" style="max-width: 200px;">
+      </div>
+
+      <button class="btn btn-primary" (click)="createEvent()" [disabled]="creating || !form.title.trim() || !form.eventDate">
+        {{ creating ? 'Creating...' : 'Create Event' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Events List -->
+  <div class="event-card card" *ngFor="let event of events">
+    <div class="card-body">
+      <div class="event-header">
+        <div class="event-date-badge">
+          <div class="event-month">{{ event.eventDate | date:'MMM' }}</div>
+          <div class="event-day">{{ event.eventDate | date:'dd' }}</div>
+        </div>
+        <div class="event-info">
+          <h5 class="event-title">{{ event.title }}</h5>
+          <div class="event-meta">
+            <span *ngIf="event.location">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="#666" viewBox="0 0 16 16">
+                <path d="M8 16s6-5.686 6-10A6 6 0 002 6c0 4.314 6 10 6 10zm0-7a3 3 0 110-6 3 3 0 010 6z" />
+              </svg>
+              {{ event.location }}
+            </span>
+            <span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="#666" viewBox="0 0 16 16">
+                <path d="M8 3.5a.5.5 0 00-1 0V8a.5.5 0 00.252.434l3.5 2a.5.5 0 00.496-.868L8 7.71V3.5z" />
+                <path d="M8 16A8 8 0 108 0a8 8 0 000 16zm7-8A7 7 0 111 8a7 7 0 0114 0z" />
+              </svg>
+              {{ formatDate(event.eventDate) }}
+            </span>
+          </div>
+        </div>
+        <span class="event-status" [class.upcoming]="isUpcoming(event.eventDate)" [class.past]="!isUpcoming(event.eventDate)">
+          {{ isUpcoming(event.eventDate) ? 'Upcoming' : 'Past' }}
+        </span>
+      </div>
+
+      <p class="event-description" *ngIf="event.description">{{ event.description }}</p>
+
+      <div class="event-footer">
+        <span class="event-creator">By {{ event.createdByName }}</span>
+        <span *ngIf="event.maxParticipants" class="event-capacity">Max {{ event.maxParticipants }} participants</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div class="text-center p-4" *ngIf="loading">
+    <div class="spinner-border spinner-border-sm text-primary"></div>
+  </div>
+
+  <!-- Empty -->
+  <div class="empty-state" *ngIf="!loading && events.length === 0">
+    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="#ccc" viewBox="0 0 16 16">
+      <path d="M11 6.5a.5.5 0 01.5-.5h1a.5.5 0 01.5.5v1a.5.5 0 01-.5.5h-1a.5.5 0 01-.5-.5v-1zm-3 0a.5.5 0 01.5-.5h1a.5.5 0 01.5.5v1a.5.5 0 01-.5.5h-1a.5.5 0 01-.5-.5v-1zm-5 3a.5.5 0 01.5-.5h1a.5.5 0 01.5.5v1a.5.5 0 01-.5.5h-1a.5.5 0 01-.5-.5v-1zm3 0a.5.5 0 01.5-.5h1a.5.5 0 01.5.5v1a.5.5 0 01-.5.5h-1a.5.5 0 01-.5-.5v-1z" />
+      <path d="M3.5 0a.5.5 0 01.5.5V1h8V.5a.5.5 0 011 0V1h1a2 2 0 012 2v11a2 2 0 01-2 2H2a2 2 0 01-2-2V3a2 2 0 012-2h1V.5a.5.5 0 01.5-.5zM1 4v10a1 1 0 001 1h12a1 1 0 001-1V4H1z" />
+    </svg>
+    <p>No events yet. Create the first campus event!</p>
+  </div>
+</div>

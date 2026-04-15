@@ -1,0 +1,120 @@
+<div class="feed-container" *ngIf="!loading && post">
+
+  <!-- Back -->
+  <a [routerLink]="['/communities', communityId]" class="back-link">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#666" viewBox="0 0 16 16">
+      <path fill-rule="evenodd" d="M15 8a.5.5 0 00-.5-.5H2.707l3.147-3.146a.5.5 0 10-.708-.708l-4 4a.5.5 0 000 .708l4 4a.5.5 0 00.708-.708L2.707 8.5H14.5A.5.5 0 0015 8z" />
+    </svg>
+    Back to {{ post.communityName }}
+  </a>
+
+  <!-- Post Card -->
+  <div class="card post-detail-card">
+    <div class="card-body">
+      <div class="post-row">
+        <!-- Votes -->
+        <div class="vote-column">
+          <button class="vote-btn" [class.active-up]="post.userVote === 1" (click)="votePost(1)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 16 16"><path d="M8 2l6 10H2z" /></svg>
+          </button>
+          <span class="vote-score" [class.positive]="post.score > 0" [class.negative]="post.score < 0">{{ post.score }}</span>
+          <button class="vote-btn" [class.active-down]="post.userVote === -1" (click)="votePost(-1)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 16 16"><path d="M8 14l6-10H2z" /></svg>
+          </button>
+        </div>
+
+        <!-- Content -->
+        <div class="post-body">
+          <div class="post-meta-header">
+            <img [src]="post.authorProfilePic || getAvatar(post.authorName)" class="avatar-sm">
+            <a [routerLink]="['/profile', post.authorId]" class="meta-author">{{ post.authorName }}</a>
+            <span class="meta-time">· {{ timeAgo(post.createdAt) }}</span>
+            <span class="meta-community">in {{ post.communityName }}</span>
+          </div>
+          <p class="post-detail-content">{{ post.content }}</p>
+          <img *ngIf="post.imageUrl" [src]="post.imageUrl" class="post-media">
+          <video *ngIf="post.videoUrl" [src]="post.videoUrl" controls class="post-media"></video>
+          <div class="post-stats-bar">
+            <span>{{ post.commentCount }} comments</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Comment -->
+  <div class="card">
+    <div class="card-body">
+      <textarea [(ngModel)]="newComment" placeholder="What are your thoughts?" rows="3" class="form-control"></textarea>
+      <div class="comment-submit">
+        <button class="btn btn-primary btn-sm" (click)="addComment()" [disabled]="commenting || !newComment.trim()">
+          {{ commenting ? 'Posting...' : 'Comment' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Comments (nested Reddit-style) -->
+  <div class="comments-thread">
+    <ng-container *ngFor="let comment of comments">
+      <ng-container *ngTemplateOutlet="commentTemplate; context: { $implicit: comment, depth: 0 }"></ng-container>
+    </ng-container>
+  </div>
+
+  <div class="empty-state" *ngIf="comments.length === 0">
+    <p>No comments yet. Be the first to share your thoughts!</p>
+  </div>
+</div>
+
+<!-- Recursive Comment Template -->
+<ng-template #commentTemplate let-comment let-depth="depth">
+  <div class="comment-thread-item" [style.margin-left.px]="depth * 24">
+    <div class="thread-line" *ngIf="depth > 0"></div>
+    <div class="comment-node">
+      <!-- Vote -->
+      <div class="comment-vote">
+        <button class="vote-btn-sm" [class.active-up]="comment.userVote === 1" (click)="voteComment(comment, 1)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M8 2l6 10H2z" /></svg>
+        </button>
+        <span class="comment-score">{{ comment.score }}</span>
+        <button class="vote-btn-sm" [class.active-down]="comment.userVote === -1" (click)="voteComment(comment, -1)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M8 14l6-10H2z" /></svg>
+        </button>
+      </div>
+
+      <!-- Comment Body -->
+      <div class="comment-body-content">
+        <div class="comment-header">
+          <img [src]="comment.authorProfilePic || getAvatar(comment.authorName)" class="avatar-xs">
+          <a [routerLink]="['/profile', comment.authorId]" class="comment-author-name">{{ comment.authorName }}</a>
+          <span class="comment-time">· {{ timeAgo(comment.createdAt) }}</span>
+        </div>
+        <p class="comment-text-content">{{ comment.content }}</p>
+        <div class="comment-actions-bar">
+          <button class="reply-btn" (click)="comment.showReplyInput = !comment.showReplyInput">Reply</button>
+          <button class="reply-btn" *ngIf="comment.replyCount > 0 && !comment.showReplies" (click)="loadReplies(comment)">
+            Show {{ comment.replyCount }} replies
+          </button>
+          <button class="reply-btn" *ngIf="comment.showReplies" (click)="loadReplies(comment)">Hide replies</button>
+        </div>
+
+        <!-- Reply Input -->
+        <div class="reply-input-box" *ngIf="comment.showReplyInput">
+          <input [(ngModel)]="comment.replyContent" placeholder="Write a reply..." class="form-control form-control-sm" (keyup.enter)="addReply(comment)">
+          <button class="btn btn-primary btn-sm" (click)="addReply(comment)" [disabled]="!comment.replyContent?.trim()">Reply</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Nested Replies -->
+    <ng-container *ngIf="comment.showReplies || (comment.replies && comment.replies.length > 0)">
+      <ng-container *ngFor="let reply of comment.replies">
+        <ng-container *ngTemplateOutlet="commentTemplate; context: { $implicit: reply, depth: depth + 1 }"></ng-container>
+      </ng-container>
+    </ng-container>
+  </div>
+</ng-template>
+
+<div class="text-center p-5" *ngIf="loading">
+  <div class="spinner-border text-primary"></div>
+</div>

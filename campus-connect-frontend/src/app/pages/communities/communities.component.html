@@ -1,0 +1,132 @@
+<div class="sidebar-container">
+  <div class="community-layout">
+
+    <!-- Left Sidebar - My Communities -->
+    <div class="community-sidebar">
+      <div class="card">
+        <div class="card-body">
+          <h6 class="sidebar-title">Your Communities</h6>
+          <div class="my-community-item" *ngFor="let c of myCommunities" [routerLink]="['/communities', c.id]">
+            <img [src]="c.iconUrl || getIcon(c.name)" class="community-icon-sm">
+            <div class="my-community-info">
+              <div class="my-community-name">{{ c.name }}</div>
+              <div class="my-community-members">{{ c.memberCount }} members</div>
+            </div>
+          </div>
+          <div class="empty-sidebar-msg" *ngIf="myCommunities.length === 0">
+            <p>You haven't joined any communities yet</p>
+          </div>
+          <button class="btn btn-outline-primary btn-sm w-100 mt-2" (click)="showCreate = !showCreate">
+            {{ showCreate ? 'Cancel' : '+ Create Community' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="community-main">
+
+      <!-- Create Form -->
+      <div class="card" *ngIf="showCreate">
+        <div class="card-body">
+          <h5 class="mb-3">Create Community</h5>
+          <div class="mb-3">
+            <label class="form-label">Community Name *</label>
+            <input type="text" class="form-control" [(ngModel)]="form.name" placeholder="e.g. Java Developers">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea class="form-control" [(ngModel)]="form.description" rows="3" placeholder="What's this community about?"></textarea>
+          </div>
+          <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" [(ngModel)]="form.isPrivate" id="privateCheck">
+            <label class="form-check-label" for="privateCheck">Private community (invite only)</label>
+          </div>
+          <button class="btn btn-primary" (click)="createCommunity()" [disabled]="creating || !form.name.trim()">
+            {{ creating ? 'Creating...' : 'Create' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Search -->
+      <div class="card">
+        <div class="card-body">
+          <div class="search-bar">
+            <input type="text" class="form-control" [(ngModel)]="searchQuery" placeholder="Search communities..." (keyup.enter)="onSearch()">
+            <button class="btn btn-primary" (click)="onSearch()">Search</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Search Results -->
+      <div *ngIf="searchResults.length > 0">
+        <h6 class="section-label">Search Results</h6>
+        <div class="community-card card" *ngFor="let c of searchResults">
+          <div class="card-body">
+            <div class="community-card-header">
+              <img [src]="c.iconUrl || getIcon(c.name)" class="community-icon">
+              <div class="community-card-info">
+                <a [routerLink]="['/communities', c.id]" class="community-card-name">{{ c.name }}</a>
+                <p class="community-card-desc">{{ c.description }}</p>
+                <span class="community-card-meta">{{ c.memberCount }} members <span *ngIf="c.isPrivate">· Private</span></span>
+              </div>
+              <button class="btn btn-primary btn-sm" *ngIf="!c.isMember" (click)="join(c)">Join</button>
+              <span class="joined-label" *ngIf="c.isMember">Joined</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs-bar">
+        <button [class.active]="activeTab === 'discover'" (click)="activeTab = 'discover'">Discover</button>
+        <button [class.active]="activeTab === 'my'" (click)="activeTab = 'my'">My Communities</button>
+      </div>
+
+      <!-- Discover -->
+      <div *ngIf="activeTab === 'discover'">
+        <div class="community-card card" *ngFor="let c of allCommunities">
+          <div class="card-body">
+            <div class="community-card-header">
+              <img [src]="c.iconUrl || getIcon(c.name)" class="community-icon">
+              <div class="community-card-info">
+                <a [routerLink]="['/communities', c.id]" class="community-card-name">{{ c.name }}</a>
+                <p class="community-card-desc">{{ c.description }}</p>
+                <span class="community-card-meta">{{ c.memberCount }} members · Created by {{ c.createdByName }} <span *ngIf="c.isPrivate">· Private</span></span>
+              </div>
+              <button class="btn btn-primary btn-sm" *ngIf="!c.isMember" (click)="join(c)">Join</button>
+              <a [routerLink]="['/communities', c.id]" class="btn btn-outline-primary btn-sm" *ngIf="c.isMember">View</a>
+            </div>
+          </div>
+        </div>
+        <div class="empty-state" *ngIf="!loading && allCommunities.length === 0">
+          <p>No communities yet. Create the first one!</p>
+        </div>
+      </div>
+
+      <!-- My Communities -->
+      <div *ngIf="activeTab === 'my'">
+        <div class="community-card card" *ngFor="let c of myCommunities; let i = index">
+          <div class="card-body">
+            <div class="community-card-header">
+              <img [src]="c.iconUrl || getIcon(c.name)" class="community-icon">
+              <div class="community-card-info">
+                <a [routerLink]="['/communities', c.id]" class="community-card-name">{{ c.name }}</a>
+                <p class="community-card-desc">{{ c.description }}</p>
+                <span class="community-card-meta">{{ c.memberCount }} members · {{ c.memberRole }}</span>
+              </div>
+              <a [routerLink]="['/communities', c.id]" class="btn btn-outline-primary btn-sm">View</a>
+            </div>
+          </div>
+        </div>
+        <div class="empty-state" *ngIf="myCommunities.length === 0">
+          <p>You haven't joined any communities yet</p>
+        </div>
+      </div>
+
+      <div class="text-center p-4" *ngIf="loading">
+        <div class="spinner-border spinner-border-sm text-primary"></div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,215 @@
+<div class="chat-layout" [class.has-selection]="selectedUserId" (click)="onChatAreaClick()">
+
+  <div class="chat-sidebar">
+    <div class="sidebar-header">
+      <h5>Messaging</h5>
+    </div>
+    <div class="conversation-list">
+      <div class="conversation-item"
+           *ngFor="let c of conversations"
+           [class.active]="selectedUserId === c.userId"
+           (click)="selectConversation(c)">
+        <img [src]="c.userProfilePic || avatar(c.userName)" class="convo-avatar" loading="lazy">
+        <div class="convo-info">
+          <div class="convo-name">{{ c.userName }}</div>
+          <div class="convo-preview" [class.deleted-preview]="c.lastMessage === 'This message was deleted'">
+            <span *ngIf="c.lastMessage === 'This message was deleted'" class="deleted-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="#999" viewBox="0 0 16 16">
+                <path d="M6.5 1h3a.5.5 0 01.5.5v1H6v-1a.5.5 0 01.5-.5zM11 2.5v-1A1.5 1.5 0 009.5 0h-3A1.5 1.5 0 005 1.5v1H1.5a.5.5 0 000 1h.538l.853 10.66A2 2 0 004.885 16h6.23a2 2 0 001.994-1.84l.853-10.66h.538a.5.5 0 000-1H11z" />
+              </svg>
+            </span>
+            {{ c.lastMessage }}
+          </div>
+        </div>
+        <div class="convo-meta">
+          <span class="convo-time" *ngIf="c.lastMessageTime">{{ timeAgo(c.lastMessageTime) }}</span>
+          <span class="unread-badge" *ngIf="c.unreadCount && c.unreadCount > 0">{{ c.unreadCount }}</span>
+        </div>
+      </div>
+
+      <div class="empty-sidebar" *ngIf="!loading && conversations.length === 0">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="#ccc" viewBox="0 0 16 16">
+          <path d="M16 8c0 3.866-3.582 7-8 7a9.06 9.06 0 01-2.347-.306c-.584.296-1.925.864-4.181 1.234-.2.032-.352-.176-.273-.362.354-.836.674-1.95.77-2.966C.744 11.37 0 9.76 0 8c0-3.866 3.582-7 8-7s8 3.134 8 7z" />
+        </svg>
+        <p>No conversations yet</p>
+        <small>Connect with people to start chatting</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="chat-main">
+
+    <div class="chat-empty" *ngIf="!selectedUserId">
+      <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" fill="#ddd" viewBox="0 0 16 16">
+        <path d="M16 8c0 3.866-3.582 7-8 7a9.06 9.06 0 01-2.347-.306c-.584.296-1.925.864-4.181 1.234-.2.032-.352-.176-.273-.362.354-.836.674-1.95.77-2.966C.744 11.37 0 9.76 0 8c0-3.866 3.582-7 8-7s8 3.134 8 7z" />
+      </svg>
+      <h5>Your messages</h5>
+      <p>Select a conversation to start chatting</p>
+    </div>
+
+    <ng-container *ngIf="selectedUserId">
+
+      <div class="chat-header">
+        <button class="back-btn" (click)="goBack()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#666" viewBox="0 0 16 16">
+            <path fill-rule="evenodd" d="M15 8a.5.5 0 00-.5-.5H2.707l3.147-3.146a.5.5 0 10-.708-.708l-4 4a.5.5 0 000 .708l4 4a.5.5 0 00.708-.708L2.707 8.5H14.5A.5.5 0 0015 8z" />
+          </svg>
+        </button>
+        <img [src]="selectedUserPic" class="header-avatar">
+        <div class="header-info">
+          <div class="chat-header-name">{{ selectedUserName }}</div>
+          <div class="typing-indicator" *ngIf="isOtherTyping">typing...</div>
+        </div>
+      </div>
+
+      <div class="messages-area">
+        <div class="messages-container" #msgContainer (scroll)="onScroll()">
+          <div class="message-wrapper"
+               *ngFor="let msg of messages; trackBy: trackMsg"
+               [id]="'msg-' + msg.id"
+               [class.mine]="isMyMessage(msg)"
+               [class.theirs]="!isMyMessage(msg)"
+               [class.has-reactions]="hasReactions(msg)"
+               (contextmenu)="onRightClick($event, msg)">
+            <img *ngIf="!isMyMessage(msg)" [src]="selectedUserPic" class="msg-avatar" loading="lazy">
+            <div class="msg-col">
+              <div class="message-bubble" [class.deleted-bubble]="msg.deleted">
+
+                <div class="reply-quote" *ngIf="msg.replyToId && !msg.deleted" (click)="scrollToMessage(msg.replyToId)">
+                  <div class="reply-author">{{ getReplyName(msg) }}</div>
+                  <div class="reply-text">{{ msg.replyToContent }}</div>
+                </div>
+
+                <p *ngIf="!msg.deleted">{{ msg.content }}</p>
+                <p *ngIf="msg.deleted" class="deleted-text">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M11 1.5v1h3.5a.5.5 0 010 1h-.538l-.853 10.66A2 2 0 0111.115 16h-6.23a2 2 0 01-1.994-1.84L2.038 3.5H1.5a.5.5 0 010-1H5v-1A1.5 1.5 0 016.5 0h3A1.5 1.5 0 0111 1.5z" />
+                  </svg>
+                  <span *ngIf="msg.deletedBy === currentUserId">You deleted this message</span>
+                  <span *ngIf="msg.deletedBy !== currentUserId">This message was deleted</span>
+                </p>
+
+                <div class="message-footer">
+                  <span class="message-time">{{ timeAgo(msg.createdAt) }}</span>
+                  <span class="read-receipt" *ngIf="isMyMessage(msg) && !msg.deleted">
+                    <svg *ngIf="!msg.readStatus" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="tick-single">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    <svg *ngIf="msg.readStatus" xmlns="http://www.w3.org/2000/svg" width="16" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="tick-double">
+                      <polyline points="17 6 6 17 1 12" />
+                      <polyline points="23 6 12 17 7 12" />
+                    </svg>
+                  </span>
+                </div>
+
+                <button class="react-trigger" *ngIf="!msg.deleted" (click)="toggleEmojiPicker(msg.id, $event)">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M8 15A7 7 0 118 1a7 7 0 010 14zm0 1A8 8 0 108 0a8 8 0 000 16z" />
+                    <path d="M4.285 9.567a.5.5 0 01.683.183A3.498 3.498 0 008 11.5a3.498 3.498 0 003.032-1.75.5.5 0 11.866.5A4.498 4.498 0 018 12.5a4.498 4.498 0 01-3.898-2.25.5.5 0 01.183-.683zM7 6.5C7 7.328 6.552 8 6 8s-1-.672-1-1.5S5.448 5 6 5s1 .672 1 1.5zm4 0c0 .828-.448 1.5-1 1.5s-1-.672-1-1.5S9.448 5 10 5s1 .672 1 1.5z" />
+                  </svg>
+                </button>
+
+                <div class="emoji-picker"
+                     *ngIf="emojiPickerMsgId === msg.id"
+                     [style.left.px]="emojiPickerX"
+                     [style.top.px]="emojiPickerY"
+                     (click)="$event.stopPropagation()">
+                  <button *ngFor="let emoji of quickEmojis"
+                          class="emoji-option"
+                          (click)="reactToMessage(msg.id, emoji, $event)">
+                    {{ emoji }}
+                  </button>
+                </div>
+              </div>
+
+              <div class="reaction-badges" *ngIf="hasReactions(msg)">
+                <button *ngFor="let group of getGroupedReactions(msg.id)"
+                        class="reaction-badge"
+                        [class.my-reaction]="group.reactedByMe"
+                        (click)="toggleExistingReaction(msg.id, group.emoji, $event)"
+                        [title]="group.users.join(', ')">
+                  <span class="reaction-emoji">{{ group.emoji }}</span>
+                  <span class="reaction-count">{{ group.count }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="no-messages" *ngIf="messages.length === 0">
+            <p>No messages yet. Say hello!</p>
+          </div>
+        </div>
+
+        <button class="new-msg-btn" *ngIf="showNewMsgBtn" (click)="scrollToNew()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="white" viewBox="0 0 16 16">
+            <path fill-rule="evenodd" d="M8 1a.5.5 0 01.5.5v11.793l3.146-3.147a.5.5 0 01.708.708l-4 4a.5.5 0 01-.708 0l-4-4a.5.5 0 01.708-.708L7.5 13.293V1.5A.5.5 0 018 1z" />
+          </svg>
+          New message
+        </button>
+      </div>
+
+      <div class="typing-bar" *ngIf="isOtherTyping">
+        <div class="typing-dots">
+          <span></span><span></span><span></span>
+        </div>
+        <span>{{ typingUserName }} is typing</span>
+      </div>
+
+      <div class="reply-bar" *ngIf="replyingTo">
+        <div class="reply-bar-content">
+          <div class="reply-bar-author">{{ replyingTo.senderId === currentUserId ? 'You' : selectedUserName }}</div>
+          <div class="reply-bar-text">{{ replyingTo.content }}</div>
+        </div>
+        <button class="reply-bar-close" (click)="cancelReply()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#666" viewBox="0 0 16 16">
+            <path d="M4.646 4.646a.5.5 0 01.708 0L8 7.293l2.646-2.647a.5.5 0 01.708.708L8.707 8l2.647 2.646a.5.5 0 01-.708.708L8 8.707l-2.646 2.647a.5.5 0 01-.708-.708L7.293 8 4.646 5.354a.5.5 0 010-.708z" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="chat-input">
+        <input type="text"
+               class="form-control"
+               #msgInput
+               [(ngModel)]="newMessage"
+               placeholder="Write a message..."
+               (keydown.enter)="send()"
+               (input)="onInputChange()">
+        <button class="btn btn-primary send-btn" (click)="send()" [disabled]="!newMessage.trim()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="white" viewBox="0 0 16 16">
+            <path d="M15.854.146a.5.5 0 01.11.54l-5.819 14.547a.75.75 0 01-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 01.124-1.33L15.314.037a.5.5 0 01.54.11z" />
+          </svg>
+        </button>
+      </div>
+    </ng-container>
+  </div>
+
+  <div class="context-menu"
+       *ngIf="contextMenuMsgId"
+       [style.left.px]="contextMenuX"
+       [style.top.px]="contextMenuY"
+       (click)="$event.stopPropagation()">
+
+    <button *ngIf="!contextMenuIsDeleted" (click)="replyToContextMsg()" class="ctx-reply">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="#333" viewBox="0 0 16 16">
+        <path d="M6.598 5.013a.144.144 0 01.202.134V6.3a.5.5 0 00.5.5c.667 0 2.013.005 3.3.822.984.624 1.99 1.76 2.595 3.876-1.02-1.683-2.39-2.51-3.6-2.856-.576-.164-1.14-.248-1.795-.264a.5.5 0 00-.5.5v1.146c0 .109-.129.17-.202.098L3.2 6.228a.144.144 0 010-.207l3.398-3.008z" />
+      </svg>
+      Reply
+    </button>
+
+    <button *ngIf="contextMenuCanDeleteForAll" (click)="deleteForEveryone(contextMenuMsgId!)" class="ctx-delete">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="#d11a2a" viewBox="0 0 16 16">
+        <path d="M6.5 1h3a.5.5 0 01.5.5v1H6v-1a.5.5 0 01.5-.5zM11 2.5v-1A1.5 1.5 0 009.5 0h-3A1.5 1.5 0 005 1.5v1H1.5a.5.5 0 000 1h.538l.853 10.66A2 2 0 004.885 16h6.23a2 2 0 001.994-1.84l.853-10.66h.538a.5.5 0 000-1H11z" />
+      </svg>
+      Delete for everyone
+    </button>
+
+    <button (click)="deleteForMe(contextMenuMsgId!)" class="ctx-delete-me">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="#666" viewBox="0 0 16 16">
+        <path d="M6.5 1h3a.5.5 0 01.5.5v1H6v-1a.5.5 0 01.5-.5zM11 2.5v-1A1.5 1.5 0 009.5 0h-3A1.5 1.5 0 005 1.5v1H1.5a.5.5 0 000 1h.538l.853 10.66A2 2 0 004.885 16h6.23a2 2 0 001.994-1.84l.853-10.66h.538a.5.5 0 000-1H11z" />
+      </svg>
+      Delete for me
+    </button>
+  </div>
+
+</div>

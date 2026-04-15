@@ -1,0 +1,114 @@
+<div class="feed-container">
+
+  <!-- Search -->
+  <div class="card">
+    <div class="card-body">
+      <div class="search-bar">
+        <input type="text" class="form-control" [(ngModel)]="searchQuery" placeholder="Search people by name or department..." (keyup.enter)="onSearch()">
+        <button class="btn btn-primary" (click)="onSearch()">Search</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search Results -->
+  <div *ngIf="searchResults.length > 0">
+    <div class="section-title">Search Results</div>
+    <div class="card">
+      <div class="card-body p-0">
+        <div class="connection-item" *ngFor="let u of searchResults">
+          <img [src]="u.profilePicUrl || getAvatar(u.name)" class="avatar">
+          <div class="connection-info">
+            <a [routerLink]="['/profile', u.id]" class="connection-name">{{ u.name }}</a>
+            <span [class]="getRoleBadgeClass(u.role)">{{ u.role }}</span>
+            <p class="connection-headline">{{ u.position }} <span *ngIf="u.department">· {{ u.department }}</span></p>
+          </div>
+          <div class="connection-actions">
+            <button class="btn btn-primary btn-sm" *ngIf="!u.connectionStatus" (click)="sendRequest(u)">Connect</button>
+            <span class="text-muted" *ngIf="u.connectionStatus === 'PENDING'">Pending</span>
+            <span class="text-success fw-bold" *ngIf="u.connectionStatus === 'ACCEPTED'">Connected</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs-bar">
+    <button [class.active]="activeTab === 'connections'" (click)="activeTab = 'connections'">
+      Connections ({{ connections.length }})
+    </button>
+    <button [class.active]="activeTab === 'pending'" (click)="activeTab = 'pending'">
+      Pending ({{ pending.length }})
+    </button>
+    <button [class.active]="activeTab === 'suggestions'" (click)="activeTab = 'suggestions'">
+      Suggestions
+    </button>
+  </div>
+
+  <!-- Pending Requests -->
+  <div *ngIf="activeTab === 'pending'">
+    <div class="card" *ngIf="pending.length > 0">
+      <div class="card-body p-0">
+        <div class="connection-item" *ngFor="let c of pending">
+          <img [src]="c.userProfilePic || getAvatar(c.userName)" class="avatar">
+          <div class="connection-info">
+            <a [routerLink]="['/profile', c.userId]" class="connection-name">{{ c.userName }}</a>
+            <span [class]="getRoleBadgeClass(c.userRole)">{{ c.userRole }}</span>
+            <p class="connection-headline">{{ c.userPosition }} <span *ngIf="c.userDepartment">· {{ c.userDepartment }}</span></p>
+          </div>
+          <div class="connection-actions">
+            <button class="btn btn-primary btn-sm" (click)="accept(c)">Accept</button>
+            <button class="btn btn-light btn-sm" (click)="reject(c)">Ignore</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="empty-state" *ngIf="pending.length === 0">
+      <p>No pending invitations</p>
+    </div>
+  </div>
+
+  <!-- My Connections -->
+  <div *ngIf="activeTab === 'connections'">
+    <div class="card" *ngIf="connections.length > 0">
+      <div class="card-body p-0">
+        <div class="connection-item" *ngFor="let c of connections; let i = index">
+          <img [src]="c.userProfilePic || getAvatar(c.userName)" class="avatar">
+          <div class="connection-info">
+            <a [routerLink]="['/profile', c.userId]" class="connection-name">{{ c.userName }}</a>
+            <span [class]="getRoleBadgeClass(c.userRole)">{{ c.userRole }}</span>
+            <p class="connection-headline">{{ c.userPosition }} <span *ngIf="c.userDepartment">· {{ c.userDepartment }}</span></p>
+          </div>
+          <div class="connection-actions">
+            <a [routerLink]="['/chat', c.userId]" class="btn btn-outline-primary btn-sm">Message</a>
+            <button class="btn btn-light btn-sm" (click)="remove(c, i)">Remove</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="empty-state" *ngIf="connections.length === 0 && !loading">
+      <p>No connections yet. Find people to connect with!</p>
+    </div>
+  </div>
+
+  <!-- Suggestions -->
+  <div *ngIf="activeTab === 'suggestions'">
+    <div class="suggestions-grid" *ngIf="suggestions.length > 0">
+      <div class="suggestion-card card" *ngFor="let s of suggestions">
+        <div class="suggestion-banner"></div>
+        <div class="card-body text-center">
+          <img [src]="s.profilePicUrl || getAvatar(s.name)" class="avatar-lg suggestion-avatar">
+          <a [routerLink]="['/profile', s.id]" class="suggestion-name">{{ s.name }}</a>
+          <p class="suggestion-headline">{{ s.position }}</p>
+          <p class="suggestion-dept" *ngIf="s.department">{{ s.department }}</p>
+          <button class="btn btn-outline-primary btn-sm w-100 mt-2" *ngIf="!s.connectionStatus" (click)="sendRequest(s)">Connect</button>
+          <button class="btn btn-light btn-sm w-100 mt-2" *ngIf="s.connectionStatus === 'PENDING'" disabled>Pending</button>
+        </div>
+      </div>
+    </div>
+    <div class="empty-state" *ngIf="suggestions.length === 0">
+      <p>No suggestions available</p>
+    </div>
+  </div>
+
+</div>

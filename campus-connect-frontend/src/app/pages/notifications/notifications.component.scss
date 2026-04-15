@@ -1,0 +1,160 @@
+.notif-header-card {
+  .notif-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    h5 {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0;
+    }
+  }
+}
+
+.notif-list-card {
+  overflow: hidden;
+  padding: 0;
+}
+
+.notif-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: background 0.15s;
+  text-decoration: none;
+  color: inherit;
+  position: relative;
+
+  &:hover {
+    background: #f5f5f5;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &.unread {
+    background: #e8f3ff;
+
+    &:hover {
+      background: #dbeeff;
+    }
+  }
+}
+
+.notif-avatar-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.notif-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #ddd;
+}
+
+.notif-type-icon {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+
+  &.like {
+    background: #e53935;
+  }
+
+  &.comment {
+    background: #43a047;
+  }
+
+  &.connect {
+    background: #0a66c2;
+  }
+
+  &.accepted {
+    background: #057642;
+  }
+
+  &.message {
+    background: #7b2cbf;
+  }
+
+  &.default {
+    background: #666;
+  }
+}
+
+.notif-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notif-message {
+  font-size: 14px;
+  line-height: 1.4;
+  color: #333;
+}
+
+.notif-actor {
+  font-weight: 600;
+  color: #191919;
+}
+
+.notif-text {
+  color: #666;
+}
+
+.notif-time {
+  font-size: 12px;
+  color: #999;
+  margin-top: 4px;
+}
+
+.unread-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #0a66c2;
+  flex-shrink: 0;
+  margin-top: 8px;
+}
+
+@media (max-width: 576px) {
+  .notif-item {
+    padding: 12px 14px;
+    gap: 10px;
+  }
+
+  .notif-avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .notif-type-icon {
+    width: 18px;
+    height: 18px;
+
+    svg {
+      width: 10px;
+      height: 10px;
+    }
+  }
+
+  .notif-message {
+    font-size: 13px;
+  }
+}

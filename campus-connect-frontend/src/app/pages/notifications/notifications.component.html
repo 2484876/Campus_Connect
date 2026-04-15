@@ -1,0 +1,88 @@
+<div class="feed-container">
+
+  <!-- Header -->
+  <div class="card notif-header-card">
+    <div class="card-body">
+      <div class="notif-page-header">
+        <h5>Notifications</h5>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Items -->
+  <div class="card notif-list-card">
+    <div class="notif-item"
+         *ngFor="let n of notifications"
+         [class.unread]="!n.isRead"
+         [routerLink]="getLink(n)">
+
+      <!-- Avatar -->
+      <div class="notif-avatar-wrapper">
+        <img [src]="n.actorProfilePic || getAvatar(n.actorName)" class="notif-avatar">
+        <div class="notif-type-icon" [ngClass]="getIcon(n.type)">
+          <!-- Like -->
+          <svg *ngIf="n.type === 'LIKE'" xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="white" viewBox="0 0 16 16">
+            <path d="M8 1.314C12.438-3.248 23.534 4.735 8 15-7.534 4.736 3.562-3.248 8 1.314z" />
+          </svg>
+          <!-- Comment -->
+          <svg *ngIf="n.type === 'COMMENT'" xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="white" viewBox="0 0 16 16">
+            <path d="M14 1a1 1 0 011 1v8a1 1 0 01-1 1H4.414A2 2 0 003 11.586l-2 2V2a1 1 0 011-1z" />
+          </svg>
+          <!-- Connection Request -->
+          <svg *ngIf="n.type === 'CONNECTION_REQUEST'" xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="white" viewBox="0 0 16 16">
+            <path d="M6 8a3 3 0 100-6 3 3 0 000 6zm2-3a2 2 0 11-4 0 2 2 0 014 0zm4 8c0 1-1 1-1 1H1s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C9.516 10.68 8.289 10 6 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664zM13.5 5a.5.5 0 01.5.5V7h1.5a.5.5 0 010 1H14v1.5a.5.5 0 01-1 0V8h-1.5a.5.5 0 010-1H13V5.5a.5.5 0 01.5-.5z" />
+          </svg>
+          <!-- Connection Accepted -->
+          <svg *ngIf="n.type === 'CONNECTION_ACCEPTED'" xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="white" viewBox="0 0 16 16">
+            <path d="M13.854 3.646a.5.5 0 010 .708l-7 7a.5.5 0 01-.708 0l-3.5-3.5a.5.5 0 11.708-.708L6.5 10.293l6.646-6.647a.5.5 0 01.708 0z" />
+          </svg>
+          <!-- Message -->
+          <svg *ngIf="n.type === 'MESSAGE'" xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="white" viewBox="0 0 16 16">
+            <path d="M16 8c0 3.866-3.582 7-8 7a9.06 9.06 0 01-2.347-.306c-.584.296-1.925.864-4.181 1.234-.2.032-.352-.176-.273-.362.354-.836.674-1.95.77-2.966C.744 11.37 0 9.76 0 8c0-3.866 3.582-7 8-7s8 3.134 8 7z" />
+          </svg>
+          <!-- Default -->
+          <svg *ngIf="n.type === 'POST'" xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="white" viewBox="0 0 16 16">
+            <path d="M8 16A8 8 0 108 0a8 8 0 000 16zm.93-9.412l-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.399l-.266-.007.066-.33 2.12-.52zm.307-2.26a.68.68 0 110-1.36.68.68 0 010 1.36z" />
+          </svg>
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="notif-content">
+        <div class="notif-message">
+          <span class="notif-actor">{{ n.actorName }}</span>
+          <span class="notif-text" [ngSwitch]="n.type">
+            <ng-container *ngSwitchCase="'LIKE'">liked your post</ng-container>
+            <ng-container *ngSwitchCase="'COMMENT'">commented on your post</ng-container>
+            <ng-container *ngSwitchCase="'CONNECTION_REQUEST'">sent you a connection request</ng-container>
+            <ng-container *ngSwitchCase="'CONNECTION_ACCEPTED'">accepted your connection request</ng-container>
+            <ng-container *ngSwitchCase="'MESSAGE'">sent you a message</ng-container>
+            <ng-container *ngSwitchDefault>interacted with your content</ng-container>
+          </span>
+        </div>
+        <div class="notif-time">{{ timeAgo(n.createdAt) }}</div>
+      </div>
+
+      <!-- Unread dot -->
+      <div class="unread-dot" *ngIf="!n.isRead"></div>
+    </div>
+  </div>
+
+  <!-- Load More -->
+  <div class="text-center p-3" *ngIf="!isLast && !loading">
+    <button class="btn btn-light" (click)="loadMore()">Show more notifications</button>
+  </div>
+
+  <!-- Loading -->
+  <div class="text-center p-4" *ngIf="loading">
+    <div class="spinner-border spinner-border-sm text-primary"></div>
+  </div>
+
+  <!-- Empty -->
+  <div class="empty-state" *ngIf="!loading && notifications.length === 0">
+    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="#ccc" viewBox="0 0 24 24">
+      <path d="M22 19h-8.28a2 2 0 11-3.44 0H2v-1a4.52 4.52 0 011.17-2.83l1-1.17h15.7l1 1.17A4.42 4.42 0 0122 18zM18.21 7.44A6.27 6.27 0 0012 2a6.27 6.27 0 00-6.21 5.44L5 13h14z" />
+    </svg>
+    <p>No notifications yet</p>
+  </div>
+</div>
