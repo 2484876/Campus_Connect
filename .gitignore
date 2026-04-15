@@ -1,1 +1,3 @@
 .vs/ 
+.env
+Backend/Backend/src/main/resources/application.properties
