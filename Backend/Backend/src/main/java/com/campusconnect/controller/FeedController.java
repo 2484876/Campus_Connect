@@ -10,14 +10,22 @@ import org.springframework.http.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;
-
+/**
+ * FeedController handles all Social Feed and Post-related operations.
+ *   APIs include:
+ * - Fetching personalized and public user feeds
+ * - Retrieving posts by specific users
+ * - Creating and deleting posts
+ * - Fetching single post details
+ * - Toggling likes on posts
+ */
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
 public class FeedController {
-
+     
     private final FeedService feedService;
-
+    
     @GetMapping("/feed")
     public ResponseEntity<Page<PostDTO>> getFeed(@AuthenticationPrincipal CustomUserDetails user,
                                                  @RequestParam(defaultValue = "0") int page,
