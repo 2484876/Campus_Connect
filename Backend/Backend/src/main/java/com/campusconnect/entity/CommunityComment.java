@@ -29,8 +29,14 @@ public class CommunityComment {
 
     private int upvotes = 0;
     private int downvotes = 0;
+
+    @Column(name = "is_accepted_answer")
+    private boolean isAcceptedAnswer = false;
+
+    @Column(name = "is_active")
     private boolean isActive = true;
 
     @CreationTimestamp
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
 }

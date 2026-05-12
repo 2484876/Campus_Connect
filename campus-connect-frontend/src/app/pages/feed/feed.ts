@@ -4,12 +4,26 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
-import { PostDTO } from '../../models';
+import { PostDTO, UserDTO } from '../../models';
+import { TrendingSidebarComponent } from '../../components/trending-sidebar/trending-sidebar.component';
+import { ReportDialogComponent } from '../../components/report-dialog/report-dialog.component';
+import { StreakWidgetComponent } from '../../components/streak-widget/streak-widget.component';
+import { CelebrantsWidgetComponent } from '../../components/celebrants-widget/celebrants-widget.component';
+import { StoriesComponent } from '../../components/stories/stories.component';
+import { PollCreatorComponent, PollDraft } from '../../components/poll-creator/poll-creator.component';
+import { PollWidgetComponent } from '../../components/poll-widget/poll-widget.component';
+import { HashtagLinksPipe } from '../../pipes/hashtag-links.pipe';
 
 @Component({
   selector: 'app-feed',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [
+    CommonModule, FormsModule, RouterModule,
+    TrendingSidebarComponent, ReportDialogComponent,
+    StreakWidgetComponent, CelebrantsWidgetComponent,
+    StoriesComponent, PollCreatorComponent, PollWidgetComponent,
+    HashtagLinksPipe
+  ],
   templateUrl: './feed.html',
   styleUrl: './feed.scss'
 })
@@ -21,12 +35,19 @@ export class FeedComponent implements OnInit {
   loading = false;
   posting = false;
   currentUserId: number;
+  myProfile: UserDTO | null = null;
 
   selectedImageFile: File | null = null;
   selectedVideoFile: File | null = null;
   imagePreview: string | null = null;
   videoPreview: string | null = null;
   uploading = false;
+
+  openMenuPostId: number | null = null;
+  reportPostId: number | null = null;
+
+  showPollCreator = false;
+  pendingPoll: PollDraft | null = null;
 
   constructor(
     private api: ApiService,
@@ -37,7 +58,15 @@ export class FeedComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.loadProfile();
     this.loadFeed();
+  }
+
+  loadProfile(): void {
+    this.api.getProfile().subscribe({
+      next: (p) => { this.myProfile = p; this.cdr.detectChanges(); },
+      error: () => { }
+    });
   }
 
   loadFeed(): void {
@@ -62,29 +91,44 @@ export class FeedComponent implements OnInit {
     }
   }
 
+  @HostListener('document:click', ['$event'])
+  onDocClick(event: Event): void {
+    const target = event.target as HTMLElement;
+    if (this.openMenuPostId !== null && !target.closest('.post-menu-wrap')) {
+      this.openMenuPostId = null;
+      this.cdr.detectChanges();
+    }
+  }
+
+  togglePostMenu(postId: number, event: Event): void {
+    event.stopPropagation();
+    this.openMenuPostId = this.openMenuPostId === postId ? null : postId;
+  }
+
+  openReport(postId: number): void { this.reportPostId = postId; this.openMenuPostId = null; }
+  closeReport(): void { this.reportPostId = null; }
+
+  toggleBookmark(post: PostDTO): void {
+    const previous = post.bookmarkedByMe;
+    post.bookmarkedByMe = !previous;
+    this.cdr.detectChanges();
+    this.api.toggleBookmark(post.id).subscribe({
+      next: (res) => { post.bookmarkedByMe = res.bookmarked; this.cdr.detectChanges(); },
+      error: () => { post.bookmarkedByMe = previous; this.cdr.detectChanges(); }
+    });
+  }
+
   onImageSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (!input.files || !input.files[0]) return;
     const file = input.files[0];
-
-    if (!file.type.startsWith('image/')) {
-      alert('Please select an image file');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Image must be under 5MB');
-      return;
-    }
-
+    if (!file.type.startsWith('image/')) { alert('Please select an image file'); return; }
+    if (file.size > 5 * 1024 * 1024) { alert('Image must be under 5MB'); return; }
     this.selectedImageFile = file;
     this.selectedVideoFile = null;
     this.videoPreview = null;
-
     const reader = new FileReader();
-    reader.onload = () => {
-      this.imagePreview = reader.result as string;
-      this.cdr.detectChanges();
-    };
+    reader.onload = () => { this.imagePreview = reader.result as string; this.cdr.detectChanges(); };
     reader.readAsDataURL(file);
   }
 
@@ -92,20 +136,11 @@ export class FeedComponent implements OnInit {
     const input = event.target as HTMLInputElement;
     if (!input.files || !input.files[0]) return;
     const file = input.files[0];
-
-    if (!file.type.startsWith('video/')) {
-      alert('Please select a video file');
-      return;
-    }
-    if (file.size > 50 * 1024 * 1024) {
-      alert('Video must be under 50MB');
-      return;
-    }
-
+    if (!file.type.startsWith('video/')) { alert('Please select a video file'); return; }
+    if (file.size > 50 * 1024 * 1024) { alert('Video must be under 50MB'); return; }
     this.selectedVideoFile = file;
     this.selectedImageFile = null;
     this.imagePreview = null;
-
     this.videoPreview = URL.createObjectURL(file);
     this.cdr.detectChanges();
   }
@@ -118,36 +153,35 @@ export class FeedComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
-  createPost(): void {
-    if (!this.newPost.trim() && !this.selectedImageFile && !this.selectedVideoFile) return;
-    if (this.posting) return;
+  togglePollCreator(): void {
+    this.showPollCreator = !this.showPollCreator;
+    if (!this.showPollCreator) this.pendingPoll = null;
+  }
 
+  onPollDraft(draft: PollDraft): void {
+    this.pendingPoll = draft;
+    this.showPollCreator = false;
+    this.cdr.detectChanges();
+  }
+
+  removePoll(): void {
+    this.pendingPoll = null;
+  }
+
+  createPost(): void {
+    if (!this.newPost.trim() && !this.selectedImageFile && !this.selectedVideoFile && !this.pendingPoll) return;
+    if (this.posting) return;
     this.posting = true;
     this.uploading = !!this.selectedImageFile || !!this.selectedVideoFile;
-
     if (this.selectedImageFile) {
       this.api.uploadImage(this.selectedImageFile).subscribe({
-        next: (res) => {
-          this.submitPost(res.url, null);
-        },
-        error: () => {
-          alert('Image upload failed');
-          this.posting = false;
-          this.uploading = false;
-          this.cdr.detectChanges();
-        }
+        next: (res) => this.submitPost(res.url, null),
+        error: () => { alert('Image upload failed'); this.posting = false; this.uploading = false; this.cdr.detectChanges(); }
       });
     } else if (this.selectedVideoFile) {
       this.api.uploadVideo(this.selectedVideoFile).subscribe({
-        next: (res) => {
-          this.submitPost(null, res.url);
-        },
-        error: () => {
-          alert('Video upload failed');
-          this.posting = false;
-          this.uploading = false;
-          this.cdr.detectChanges();
-        }
+        next: (res) => this.submitPost(null, res.url),
+        error: () => { alert('Video upload failed'); this.posting = false; this.uploading = false; this.cdr.detectChanges(); }
       });
     } else {
       this.submitPost(null, null);
@@ -155,28 +189,39 @@ export class FeedComponent implements OnInit {
   }
 
   private submitPost(imageUrl: string | null, videoUrl: string | null): void {
-    const payload: any = {
-      content: this.newPost,
-      postType: 'GENERAL'
-    };
+    const payload: any = { content: this.newPost, postType: 'GENERAL' };
     if (imageUrl) payload.imageUrl = imageUrl;
     if (videoUrl) payload.videoUrl = videoUrl;
 
     this.api.createPost(payload).subscribe({
       next: (post) => {
-        this.posts.unshift(post);
-        this.newPost = '';
-        this.removeMedia();
-        this.posting = false;
-        this.uploading = false;
-        this.cdr.detectChanges();
+        if (this.pendingPoll) {
+          const expiresAt = new Date(Date.now() + this.pendingPoll.durationHours * 3600000).toISOString();
+          this.api.createPoll(post.id, {
+            question: this.pendingPoll.question,
+            options: this.pendingPoll.options,
+            multiChoice: this.pendingPoll.multiChoice,
+            expiresAt
+          }).subscribe(() => {
+            this.posts.unshift(post);
+            this.afterPost();
+          }, () => this.afterPost());
+        } else {
+          this.posts.unshift(post);
+          this.afterPost();
+        }
       },
-      error: () => {
-        this.posting = false;
-        this.uploading = false;
-        this.cdr.detectChanges();
-      }
+      error: () => { this.posting = false; this.uploading = false; this.cdr.detectChanges(); }
     });
+  }
+
+  private afterPost(): void {
+    this.newPost = '';
+    this.removeMedia();
+    this.pendingPoll = null;
+    this.posting = false;
+    this.uploading = false;
+    this.cdr.detectChanges();
   }
 
   toggleLike(post: PostDTO): void {
@@ -192,10 +237,7 @@ export class FeedComponent implements OnInit {
   toggleComments(post: PostDTO): void {
     post.showComments = !post.showComments;
     if (post.showComments && (!post.recentComments || post.recentComments.length === 0)) {
-      this.api.getComments(post.id).subscribe(res => {
-        post.recentComments = res.content;
-        this.cdr.detectChanges();
-      });
+      this.api.getComments(post.id).subscribe(res => { post.recentComments = res.content; this.cdr.detectChanges(); });
     }
     this.cdr.detectChanges();
   }
@@ -221,7 +263,12 @@ export class FeedComponent implements OnInit {
   }
 
   getUserAvatar(name: string): string {
-    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0a66c2&color=fff`;
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=2d5f3f&color=fff`;
+  }
+
+  getMyAvatar(): string {
+    if (this.myProfile?.profilePicUrl) return this.myProfile.profilePicUrl;
+    return this.getUserAvatar(this.auth.getCurrentUser()?.name || 'U');
   }
 
   getRoleBadgeClass(role: string): string {

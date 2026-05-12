@@ -1,0 +1,60 @@
+<div class="chat-overlay" (click)="close.emit()">
+  <div class="chat-panel" (click)="$event.stopPropagation()">
+
+    <div class="chat-head">
+      <div class="head-left">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+        <span class="head-title">Event chat</span>
+      </div>
+      <button class="icon-btn" (click)="close.emit()" title="Close">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+      </button>
+    </div>
+
+    <div class="chat-scroll" #scrollBox>
+      <div *ngIf="loading && messages.length === 0" class="chat-loading">
+        <div class="spinner-border spinner-border-sm"></div>
+      </div>
+
+      <div *ngIf="!loading && messages.length === 0" class="chat-empty">
+        <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+        <p>No messages yet</p>
+      </div>
+
+      <div *ngFor="let m of messages; let i = index" class="msg" [class.mine]="isMine(m)">
+        <img *ngIf="!isMine(m) && shouldShowAvatar(i)"
+             [src]="avatarFor(m)"
+             [routerLink]="['/profile', m.userId]"
+             class="msg-avatar">
+        <div *ngIf="!isMine(m) && !shouldShowAvatar(i)" class="msg-avatar-spacer"></div>
+
+        <div class="msg-bubble-wrap">
+          <div *ngIf="!isMine(m) && shouldShowAvatar(i)" class="msg-author">{{ m.userName }}</div>
+          <div class="msg-bubble">
+            <span class="msg-text">{{ m.content }}</span>
+            <span class="msg-time">{{ formatTime(m.createdAt) }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-composer">
+      <input type="text"
+             class="composer-input"
+             [(ngModel)]="draft"
+             (keydown)="onKey($event)"
+             placeholder="Type a message"
+             maxlength="1000"
+             [disabled]="sending">
+      <button class="send-btn"
+              (click)="send()"
+              [disabled]="!draft.trim() || sending"
+              title="Send">
+        <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+          <path d="M15.854.146a.5.5 0 01.11.54l-5.819 14.547a.75.75 0 01-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 01.124-1.33L15.314.037a.5.5 0 01.54.11z" />
+        </svg>
+      </button>
+    </div>
+
+  </div>
+</div>

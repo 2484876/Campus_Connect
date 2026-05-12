@@ -1,6 +1,7 @@
 package com.campusconnect.dto;
 
 import lombok.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -16,6 +17,8 @@ public class UserDTO {
     private String profilePicUrl;
     private String bannerUrl;
     private String phone;
+    private LocalDate birthday;
+    private LocalDate workAnniversary;
     private LocalDateTime createdAt;
     private List<String> skills;
     private int connectionCount;

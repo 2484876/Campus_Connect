@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -45,6 +46,11 @@ public class User {
     private String phone;
 
     private boolean isActive = true;
+
+    private LocalDate birthday;
+
+    @Column(name = "work_anniversary")
+    private LocalDate workAnniversary;
 
     @CreationTimestamp
     private LocalDateTime createdAt;

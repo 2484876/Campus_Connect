@@ -1,0 +1,50 @@
+<div class="modal-backdrop-custom" (click)="closeDialog()">
+  <div class="modal-content-custom" (click)="$event.stopPropagation()">
+    <div class="modal-header-custom">
+      <h5 *ngIf="!done">Report this {{ targetType.toLowerCase().replace('_', ' ') }}</h5>
+      <h5 *ngIf="done">Thanks for letting us know</h5>
+      <button class="icon-btn" (click)="closeDialog()">✕</button>
+    </div>
+
+    <div class="modal-body-custom" *ngIf="!done">
+      <p class="hint">Help us understand what's wrong. Your report stays anonymous.</p>
+
+      <div class="reason-list">
+        <label *ngFor="let r of reasons" class="reason-row" [class.selected]="selectedReason === r.value">
+          <input type="radio" name="reason" [value]="r.value" [(ngModel)]="selectedReason">
+          <span>{{ r.label }}</span>
+        </label>
+      </div>
+
+      <textarea *ngIf="selectedReason"
+                class="form-control details-input"
+                [(ngModel)]="details"
+                rows="3"
+                placeholder="Add details (optional)"></textarea>
+
+      <div *ngIf="error" class="error-msg">{{ error }}</div>
+    </div>
+
+    <div class="modal-body-custom done-state" *ngIf="done">
+      <div class="check-circle">
+        <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+      </div>
+      <p>Your report has been submitted. Our team will review it.</p>
+    </div>
+
+    <div class="modal-footer-custom" *ngIf="!done">
+      <button class="btn btn-light" (click)="closeDialog()">Cancel</button>
+      <button class="btn btn-primary"
+              (click)="submit()"
+              [disabled]="!selectedReason || submitting">
+        {{ submitting ? 'Submitting...' : 'Submit report' }}
+      </button>
+    </div>
+
+    <div class="modal-footer-custom" *ngIf="done">
+      <button class="btn btn-primary" (click)="closeDialog()">Done</button>
+    </div>
+  </div>
+</div>

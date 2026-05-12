@@ -19,5 +19,6 @@ public class PostDTO {
     private int likeCount;
     private int commentCount;
     private boolean likedByMe;
+    private boolean bookmarkedByMe;
     private List<CommentDTO> recentComments;
 }

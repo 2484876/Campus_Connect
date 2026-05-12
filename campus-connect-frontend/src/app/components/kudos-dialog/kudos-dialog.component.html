@@ -1,0 +1,54 @@
+<div class="modal-backdrop-custom" (click)="closeDialog()">
+  <div class="modal-content-custom" (click)="$event.stopPropagation()">
+    <div class="modal-header-custom">
+      <h5 *ngIf="!done">Give kudos to {{ receiverName }}</h5>
+      <h5 *ngIf="done">Kudos sent 🎉</h5>
+      <button class="icon-btn" (click)="closeDialog()">✕</button>
+    </div>
+
+    <div class="modal-body-custom" *ngIf="!done">
+      <p class="hint">Recognize a colleague for great work</p>
+
+      <div class="cat-grid">
+        <button *ngFor="let cat of categories"
+                class="cat-btn"
+                [class.selected]="selectedCategory === cat.value"
+                (click)="selectedCategory = cat.value">
+          <div class="cat-emoji">{{ cat.emoji }}</div>
+          <div class="cat-label">{{ cat.label }}</div>
+        </button>
+      </div>
+
+      <textarea *ngIf="selectedCategory"
+                class="form-control kudos-msg"
+                [(ngModel)]="message"
+                rows="3"
+                placeholder="Add a personal message (optional)"></textarea>
+
+      <label class="visibility-toggle" *ngIf="selectedCategory">
+        <input type="checkbox" [(ngModel)]="isPublic">
+        <span>Make this public (everyone can see)</span>
+      </label>
+
+      <div *ngIf="error" class="error-msg">{{ error }}</div>
+    </div>
+
+    <div class="modal-body-custom done-state" *ngIf="done">
+      <div class="success-emoji">🎉</div>
+      <p>Your kudos has been sent to <strong>{{ receiverName }}</strong>.</p>
+    </div>
+
+    <div class="modal-footer-custom" *ngIf="!done">
+      <button class="btn btn-light" (click)="closeDialog()">Cancel</button>
+      <button class="btn btn-primary"
+              (click)="submit()"
+              [disabled]="!selectedCategory || submitting">
+        {{ submitting ? 'Sending...' : 'Send kudos' }}
+      </button>
+    </div>
+
+    <div class="modal-footer-custom" *ngIf="done">
+      <button class="btn btn-primary" (click)="closeDialog()">Done</button>
+    </div>
+  </div>
+</div>

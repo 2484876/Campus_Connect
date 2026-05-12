@@ -20,6 +20,7 @@ export const routes: Routes = [
   { path: 'chat', loadComponent: () => import('./pages/chat/chat').then(m => m.ChatComponent), canActivate: [authGuard] },
   { path: 'chat/:userId', loadComponent: () => import('./pages/chat/chat').then(m => m.ChatComponent), canActivate: [authGuard] },
   { path: 'events', loadComponent: () => import('./pages/events/events').then(m => m.EventsComponent), canActivate: [authGuard] },
+  { path: 'events/:id', loadComponent: () => import('./pages/event-detail/event-detail.component').then(m => m.EventDetailComponent), canActivate: [authGuard] },
   { path: 'notifications', loadComponent: () => import('./pages/notifications/notifications.component').then(m => m.NotificationsComponent), canActivate: [authGuard] },
   { path: 'communities', loadComponent: () => import('./pages/communities/communities.component').then(m => m.CommunitiesComponent), canActivate: [authGuard] },
   { path: 'communities/:id', loadComponent: () => import('./pages/community-detail/community-detail.component').then(m => m.CommunityDetailComponent), canActivate: [authGuard] },

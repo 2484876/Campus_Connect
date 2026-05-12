@@ -1,0 +1,22 @@
+<div class="celeb-card" *ngIf="!loading && items.length > 0">
+  <div class="celeb-header">
+    <span>Today's celebrations</span>
+    <span class="emoji">🎉</span>
+  </div>
+
+  <a *ngFor="let item of items"
+     [routerLink]="['/profile', item.user.id]"
+     class="celeb-row">
+    <img [src]="avatar(item.user)" class="avatar-sm">
+    <div class="celeb-info">
+      <div class="name">{{ item.user.name }}</div>
+      <div class="reason">
+        <span *ngIf="item.isBirthday">🎂 Birthday</span>
+        <span *ngIf="item.isBirthday && item.isAnniversary"> · </span>
+        <span *ngIf="item.isAnniversary">
+          💼 {{ item.yearsLabel ? item.yearsLabel : 'Work anniversary' }}
+        </span>
+      </div>
+    </div>
+  </a>
+</div>

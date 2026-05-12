@@ -1,0 +1,63 @@
+<div class="feed-container">
+  <div class="page-header card">
+    <div class="card-body">
+      <h2>Saved posts</h2>
+      <p class="subtitle">Your bookmarked posts — only visible to you</p>
+    </div>
+  </div>
+
+  <div *ngIf="loading && posts.length === 0" class="empty-state">
+    <p>Loading saved posts...</p>
+  </div>
+
+  <div *ngIf="!loading && posts.length === 0" class="empty-state card">
+    <div class="card-body">
+      <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="opacity:0.4;margin:0 auto 12px;display:block">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
+      </svg>
+      <h5>No saved posts yet</h5>
+      <p>Tap the bookmark icon on any post to save it for later</p>
+    </div>
+  </div>
+
+  <div *ngFor="let post of posts" class="card post-card">
+    <div class="card-body">
+      <div class="post-header">
+        <img [src]="post.authorProfilePic || 'https://ui-avatars.com/api/?name=' + post.authorName + '&background=2d5f3f&color=fff'"
+             class="avatar clickable"
+             [routerLink]="['/profile', post.authorId]">
+        <div class="author-info clickable" [routerLink]="['/profile', post.authorId]">
+          <div class="author-name">
+            {{ post.authorName }}
+            <span class="badge-role" [ngClass]="'badge-' + post.authorRole.toLowerCase()">
+              {{ post.authorRole.replace('_', ' ') }}
+            </span>
+          </div>
+          <div class="author-position">{{ post.authorPosition }} · {{ post.authorDepartment }}</div>
+          <div class="time-ago">{{ formatDate(post.createdAt) }}</div>
+        </div>
+        <button class="icon-btn" (click)="removeBookmark(post)" title="Remove bookmark">
+          <svg width="20" height="20" fill="var(--primary)" viewBox="0 0 24 24">
+            <path d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="post-content" [innerHTML]="post.content | hashtagLinks"></div>
+
+      <img *ngIf="post.imageUrl" [src]="post.imageUrl" class="post-image">
+
+      <div class="post-stats">
+        <span>{{ post.likeCount }} likes</span>
+        <span>·</span>
+        <span>{{ post.commentCount }} comments</span>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="hasMore && posts.length > 0" class="load-more">
+    <button class="btn btn-light" (click)="loadMore()" [disabled]="loading">
+      {{ loading ? 'Loading...' : 'Load more' }}
+    </button>
+  </div>
+</div>

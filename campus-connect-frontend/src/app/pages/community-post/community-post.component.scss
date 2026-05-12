@@ -285,3 +285,344 @@
     padding: 8px 10px;
   }
 }
+/* === BATCH 5 APPENDED STYLES (append to existing community-post.component.scss) === */
+
+.post-detail-card.is-question {
+  border-left: 4px solid var(--accent);
+}
+
+.post-detail-card.resolved-q {
+  border-left-color: var(--primary);
+}
+
+.post-flags-top {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.flag-q {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #92400e;
+
+  &.resolved {
+    background: var(--primary-light);
+    color: var(--primary);
+  }
+}
+
+.flag-anon {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.meta-author.anonymous {
+  color: var(--text-muted) !important;
+  font-style: italic;
+}
+
+.unmasked-pill {
+  font-size: 10px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  padding: 2px 8px;
+  border-radius: 999px;
+  margin-left: 6px;
+  font-weight: 600;
+}
+
+.reveal-btn {
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 3px 10px;
+  border-radius: 999px;
+  margin-left: 8px;
+  cursor: pointer;
+  font-family: inherit;
+
+  &:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+}
+
+/* Accepted answer pin section */
+
+.accepted-answer-wrap {
+  margin-bottom: 16px;
+  border: 2px solid var(--primary);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg-card);
+}
+
+.accepted-banner {
+  background: var(--primary);
+  color: #fff;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: 0.5px;
+
+  .unaccept-btn {
+    margin-left: auto;
+    background: rgba(255,255,255,0.18);
+    border: none;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-family: inherit;
+
+    &:hover {
+      background: rgba(255,255,255,0.28);
+    }
+  }
+}
+
+.accepted-answer-wrap .comment-thread-item {
+  margin-left: 0 !important;
+  padding: 14px 16px;
+}
+
+/* Inline accepted comment styling in main thread */
+
+.comment-thread-item.accepted {
+  background: var(--primary-light);
+  border-radius: 8px;
+  padding: 6px;
+
+  .comment-accepted-flag {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    color: var(--primary);
+    margin-bottom: 4px;
+  }
+}
+
+.reply-btn.accept {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--primary) !important;
+  background: var(--primary-light);
+  border: 1px solid var(--primary);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--primary);
+    color: #fff !important;
+  }
+}
+
+.reply-btn.unaccept {
+  color: var(--text-muted) !important;
+}
+/* === BATCH 5 APPENDED STYLES (REPLACES old Batch 5 append section if present) === */
+/* Append to existing community-post.component.scss */
+
+.btn-primary-xs {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  padding: 5px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+
+  &:hover {
+    background: var(--primary-dark);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.post-detail-card.is-question {
+  border-left: 3px solid var(--accent);
+}
+
+.post-detail-card.resolved-q {
+  border-left-color: var(--primary);
+}
+
+.post-flags-top {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.flag-q, .flag-anon {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 3px;
+}
+
+.flag-q {
+  background: #fef3c7;
+  color: #92400e;
+
+  &.resolved {
+    background: var(--primary-light);
+    color: var(--primary);
+  }
+}
+
+.flag-anon {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.meta-author.anonymous {
+  color: var(--text-muted) !important;
+  font-style: italic;
+}
+
+.unmasked-pill {
+  font-size: 9px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-left: 4px;
+  font-weight: 600;
+}
+
+.reveal-mini {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 2px 8px;
+  border-radius: 3px;
+  margin-left: 6px;
+  cursor: pointer;
+  font-family: inherit;
+
+  &:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+}
+
+.accepted-answer-wrap {
+  margin-bottom: 12px;
+  border: 1px solid var(--primary);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg-card);
+}
+
+.accepted-banner {
+  background: var(--primary);
+  color: #fff;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  letter-spacing: 0.3px;
+
+  .unaccept-btn {
+    margin-left: auto;
+    background: rgba(255,255,255,0.15);
+    border: none;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: inherit;
+
+    &:hover {
+      background: rgba(255,255,255,0.25);
+    }
+  }
+}
+
+.accepted-answer-wrap .comment-thread-item {
+  margin-left: 0 !important;
+  padding: 10px 14px;
+}
+
+.comment-thread-item.accepted {
+  background: var(--primary-light);
+  border-radius: 4px;
+  padding: 6px;
+
+  .comment-accepted-flag {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 3px;
+  }
+}
+
+.reply-btn.accept {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--primary) !important;
+  background: var(--primary-light);
+  border: 1px solid var(--primary);
+  border-radius: 3px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--primary);
+    color: #fff !important;
+  }
+}
+
+.reply-btn.unaccept {
+  color: var(--text-muted) !important;
+}
+
+

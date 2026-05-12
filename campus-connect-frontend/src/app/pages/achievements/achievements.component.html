@@ -1,0 +1,45 @@
+<div class="feed-container">
+  <div class="ach-header card">
+    <div class="card-body">
+      <h2>Your achievements</h2>
+      <p class="subtitle">Badges earned from your activity on Campus Connect</p>
+
+      <div class="stat-row" *ngIf="!loading">
+        <div class="stat">
+          <div class="stat-num">{{ earnedCount() }}</div>
+          <div class="stat-label">Earned</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">{{ achievements.length }}</div>
+          <div class="stat-label">Total</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">{{ totalPoints() }}</div>
+          <div class="stat-label">Points</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="empty-state">
+    <p>Loading achievements...</p>
+  </div>
+
+  <div class="ach-grid" *ngIf="!loading">
+    <div *ngFor="let a of achievements"
+         class="ach-card"
+         [class.locked]="!a.earned"
+         [class]="'tier-' + a.tier.toLowerCase()">
+      <div class="ach-icon">{{ a.icon }}</div>
+      <div class="ach-name">{{ a.name }}</div>
+      <div class="ach-desc">{{ a.description }}</div>
+      <div class="ach-meta">
+        <span class="tier-badge">{{ a.tier }}</span>
+        <span class="points">+{{ a.points }} pts</span>
+      </div>
+      <div class="earned-on" *ngIf="a.earned && a.earnedAt">
+        Earned {{ formatDate(a.earnedAt) }}
+      </div>
+    </div>
+  </div>
+</div>

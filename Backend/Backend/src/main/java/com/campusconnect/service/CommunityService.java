@@ -2,9 +2,11 @@ package com.campusconnect.service;
 
 import com.campusconnect.dto.*;
 import com.campusconnect.entity.*;
+import com.campusconnect.enums.CommunityPostType;
 import com.campusconnect.exception.*;
 import com.campusconnect.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +25,9 @@ public class CommunityService {
     private final UserRepository userRepository;
     private final ChatService chatService;
 
+    @Autowired(required = false)
+    private AchievementService achievementService;
+
     @Transactional
     public CommunityDTO createCommunity(Long userId, CreateCommunityRequest req) {
         User user = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User not found"));
@@ -33,6 +38,7 @@ public class CommunityService {
                 .memberCount(1).isActive(true).build();
         Community saved = communityRepository.save(community);
         memberRepository.save(CommunityMember.builder().community(saved).user(user).role("OWNER").build());
+        try { if (achievementService != null) achievementService.award(userId, "FIRST_COMMUNITY"); } catch (Exception ignored) {}
         return mapCommunityDTO(saved, userId);
     }
 
@@ -98,6 +104,7 @@ public class CommunityService {
         memberRepository.save(CommunityMember.builder().community(community).user(user).role("MEMBER").build());
         community.setMemberCount(community.getMemberCount() + 1);
         communityRepository.save(community);
+        try { if (achievementService != null) achievementService.award(userId, "FIRST_COMMUNITY"); } catch (Exception ignored) {}
         return mapCommunityDTO(community, userId);
     }
 
@@ -145,11 +152,34 @@ public class CommunityService {
         Community community = communityRepository.findById(communityId).orElseThrow(() -> new ResourceNotFoundException("Community not found"));
         User user = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User not found"));
         if (!memberRepository.existsByCommunityIdAndUserId(communityId, userId)) throw new BadRequestException("Must be a member to post");
+
+        if ((req.getContent() == null || req.getContent().isBlank())
+                && (req.getImageUrl() == null || req.getImageUrl().isBlank())
+                && (req.getVideoUrl() == null || req.getVideoUrl().isBlank())) {
+            throw new BadRequestException("Post needs text, image, or video");
+        }
+
+        CommunityPostType type = CommunityPostType.DISCUSSION;
+        if (req.getPostType() != null) {
+            try { type = CommunityPostType.valueOf(req.getPostType().toUpperCase()); }
+            catch (Exception ignored) {}
+        }
+
         CommunityPost post = CommunityPost.builder()
-                .community(community).user(user).content(req.getContent())
+                .community(community).user(user)
+                .content(req.getContent() == null ? "" : req.getContent())
                 .imageUrl(req.getImageUrl()).videoUrl(req.getVideoUrl())
+                .postType(type).isAnonymous(req.isAnonymous())
+                .resolved(false).acceptedAnswerId(null)
                 .upvotes(0).downvotes(0).isActive(true).build();
-        return mapPostDTO(postRepository.save(post), userId);
+
+        CommunityPost saved = postRepository.save(post);
+
+        if (type == CommunityPostType.QUESTION) {
+            try { if (achievementService != null) achievementService.award(userId, "FIRST_QUESTION"); } catch (Exception ignored) {}
+        }
+
+        return mapPostDTO(saved, userId);
     }
 
     @Transactional
@@ -165,6 +195,76 @@ public class CommunityService {
         if (!isAuthor && !isAdminOrOwner) throw new UnauthorizedException("Not authorized to delete this post");
         post.setActive(false);
         postRepository.save(post);
+    }
+
+    @Transactional
+    public CommunityPostDTO unmaskAnonymous(Long postId, Long userId) {
+        CommunityPost post = postRepository.findById(postId).orElseThrow(() -> new ResourceNotFoundException("Post not found"));
+        if (!post.getUser().getId().equals(userId)) {
+            throw new UnauthorizedException("Only the original author can unmask this post");
+        }
+        post.setAnonymous(false);
+        postRepository.save(post);
+        return mapPostDTO(post, userId);
+    }
+
+    @Transactional
+    public CommunityPostDTO acceptAnswer(Long postId, Long commentId, Long userId) {
+        CommunityPost post = postRepository.findById(postId).orElseThrow(() -> new ResourceNotFoundException("Post not found"));
+        if (post.getPostType() != CommunityPostType.QUESTION)
+            throw new BadRequestException("Only questions can have accepted answers");
+
+        boolean isAuthor = post.getUser().getId().equals(userId);
+        var member = memberRepository.findByCommunityIdAndUserId(post.getCommunity().getId(), userId);
+        boolean isAdmin = member.isPresent() &&
+                ("OWNER".equals(member.get().getRole()) || "ADMIN".equals(member.get().getRole()));
+        if (!isAuthor && !isAdmin)
+            throw new UnauthorizedException("Only the asker or admins can accept an answer");
+
+        CommunityComment comment = commentRepository.findById(commentId).orElseThrow(() -> new ResourceNotFoundException("Comment not found"));
+        if (!comment.getPost().getId().equals(postId))
+            throw new BadRequestException("That comment isn't on this post");
+
+        if (post.getAcceptedAnswerId() != null) {
+            commentRepository.findById(post.getAcceptedAnswerId()).ifPresent(prev -> {
+                prev.setAcceptedAnswer(false);
+                commentRepository.save(prev);
+            });
+        }
+
+        comment.setAcceptedAnswer(true);
+        commentRepository.save(comment);
+        post.setAcceptedAnswerId(comment.getId());
+        post.setResolved(true);
+        postRepository.save(post);
+
+        try {
+            if (achievementService != null) achievementService.award(comment.getUser().getId(), "FIRST_ANSWER_ACCEPTED");
+        } catch (Exception ignored) {}
+
+        return mapPostDTO(post, userId);
+    }
+
+    @Transactional
+    public CommunityPostDTO unacceptAnswer(Long postId, Long userId) {
+        CommunityPost post = postRepository.findById(postId).orElseThrow(() -> new ResourceNotFoundException("Post not found"));
+        boolean isAuthor = post.getUser().getId().equals(userId);
+        var member = memberRepository.findByCommunityIdAndUserId(post.getCommunity().getId(), userId);
+        boolean isAdmin = member.isPresent() &&
+                ("OWNER".equals(member.get().getRole()) || "ADMIN".equals(member.get().getRole()));
+        if (!isAuthor && !isAdmin)
+            throw new UnauthorizedException("Only the asker or admins can unmark");
+
+        if (post.getAcceptedAnswerId() != null) {
+            commentRepository.findById(post.getAcceptedAnswerId()).ifPresent(c -> {
+                c.setAcceptedAnswer(false);
+                commentRepository.save(c);
+            });
+        }
+        post.setAcceptedAnswerId(null);
+        post.setResolved(false);
+        postRepository.save(post);
+        return mapPostDTO(post, userId);
     }
 
     public Page<CommunityPostDTO> getCommunityPosts(Long communityId, Long userId, int page, int size) {
@@ -209,7 +309,7 @@ public class CommunityService {
         CommunityComment parent = req.getParentCommentId() != null ? commentRepository.findById(req.getParentCommentId()).orElse(null) : null;
         CommunityComment comment = CommunityComment.builder()
                 .post(post).user(user).parentComment(parent).content(req.getContent())
-                .upvotes(0).downvotes(0).isActive(true).build();
+                .upvotes(0).downvotes(0).isActive(true).isAcceptedAnswer(false).build();
         return mapCommentDTO(commentRepository.save(comment), userId, 0);
     }
 
@@ -259,6 +359,12 @@ public class CommunityService {
         if (!allowed) throw new UnauthorizedException("Insufficient permissions");
     }
 
+    private boolean isAdmin(Long communityId, Long userId) {
+        return memberRepository.findByCommunityIdAndUserId(communityId, userId)
+                .map(m -> "OWNER".equals(m.getRole()) || "ADMIN".equals(m.getRole()))
+                .orElse(false);
+    }
+
     private CommunityDTO mapCommunityDTO(Community c, Long userId) {
         boolean isMember = memberRepository.existsByCommunityIdAndUserId(c.getId(), userId);
         String role = null;
@@ -275,12 +381,26 @@ public class CommunityService {
         int userVote = 0;
         var vote = voteRepository.findByUserIdAndPostIdAndCommentIdIsNull(userId, p.getId());
         if (vote.isPresent()) userVote = vote.get().getValue();
+
+        boolean isAuthor = p.getUser().getId().equals(userId);
+        boolean admin = isAdmin(p.getCommunity().getId(), userId);
+        boolean canSeeRealAuthor = !p.isAnonymous() || isAuthor || admin;
+
+        String authorName = canSeeRealAuthor ? p.getUser().getName() : "Anonymous";
+        String authorProfilePic = canSeeRealAuthor ? p.getUser().getProfilePicUrl() : null;
+        String authorRole = canSeeRealAuthor ? p.getUser().getRole().name() : "ANONYMOUS";
+        Long authorId = canSeeRealAuthor ? p.getUser().getId() : null;
+
         return CommunityPostDTO.builder().id(p.getId()).communityId(p.getCommunity().getId())
                 .communityName(p.getCommunity().getName()).communityIconUrl(p.getCommunity().getIconUrl())
-                .authorId(p.getUser().getId()).authorName(p.getUser().getName())
-                .authorProfilePic(p.getUser().getProfilePicUrl()).authorRole(p.getUser().getRole().name())
+                .authorId(authorId).authorName(authorName)
+                .authorProfilePic(authorProfilePic).authorRole(authorRole)
+                .anonymous(p.isAnonymous()).unmaskedByMe(p.isAnonymous() && canSeeRealAuthor)
                 .content(p.getContent()).imageUrl(p.getImageUrl()).videoUrl(p.getVideoUrl())
-                .upvotes(p.getUpvotes()).downvotes(p.getDownvotes()).score(p.getUpvotes() - p.getDownvotes())
+                .postType(p.getPostType() == null ? "DISCUSSION" : p.getPostType().name())
+                .resolved(p.isResolved()).acceptedAnswerId(p.getAcceptedAnswerId())
+                .upvotes(p.getUpvotes()).downvotes(p.getDownvotes())
+                .score(p.getUpvotes() - p.getDownvotes())
                 .userVote(userVote).commentCount(commentCount).createdAt(p.getCreatedAt()).build();
     }
 
@@ -296,6 +416,7 @@ public class CommunityService {
                 .parentCommentId(c.getParentComment() != null ? c.getParentComment().getId() : null)
                 .content(c.getContent()).upvotes(c.getUpvotes()).downvotes(c.getDownvotes())
                 .score(c.getUpvotes() - c.getDownvotes()).userVote(userVote)
-                .replyCount(replyCount).replies(replies).createdAt(c.getCreatedAt()).build();
+                .replyCount(replyCount).acceptedAnswer(c.isAcceptedAnswer())
+                .replies(replies).createdAt(c.getCreatedAt()).build();
     }
 }

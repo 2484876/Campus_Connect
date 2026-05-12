@@ -1,0 +1,82 @@
+<div class="modal-backdrop" (click)="close.emit()">
+  <div class="modal-frame narrow" (click)="$event.stopPropagation()">
+
+    <div class="modal-head">
+      <h3>Add resource</h3>
+      <button class="icon-btn" (click)="close.emit()" title="Close">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+      </button>
+    </div>
+
+    <div class="modal-body">
+
+      <div class="seg">
+        <button class="seg-btn" [class.active]="resourceType === 'LINK'" (click)="setType('LINK')">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>
+          Link
+        </button>
+        <button class="seg-btn" [class.active]="resourceType === 'FILE'" (click)="setType('FILE')">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+          File
+        </button>
+      </div>
+
+      <div class="field">
+        <label>Title *</label>
+        <input type="text" class="input" [(ngModel)]="title" placeholder="e.g. Onboarding handbook" maxlength="200">
+      </div>
+
+      <div class="field">
+        <label>Description</label>
+        <textarea class="input" [(ngModel)]="description" rows="2" placeholder="What's it for?"></textarea>
+      </div>
+
+      <div class="field" *ngIf="resourceType === 'LINK'">
+        <label>URL *</label>
+        <input type="url" class="input" [(ngModel)]="url" placeholder="https://...">
+      </div>
+
+      <div class="field" *ngIf="resourceType === 'FILE'">
+        <label>File * (max 20 MB)</label>
+        <div class="file-drop" *ngIf="!selectedFile">
+          <label class="drop-inner">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" /></svg>
+            <span>Click to choose a file</span>
+            <input type="file" hidden (change)="onFileSelected($event)">
+          </label>
+        </div>
+
+        <div class="file-row" *ngIf="selectedFile">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+          <div class="file-info">
+            <div class="file-name">{{ selectedFile.name }}</div>
+            <div class="file-size">
+              {{ (fileSizeBytes || 0) / 1024 | number:'1.0-0' }} KB
+              <span *ngIf="uploading"> · uploading...</span>
+              <span *ngIf="!uploading && url" class="ok"> · uploaded</span>
+            </div>
+          </div>
+          <button class="icon-btn" (click)="removeFile()" [disabled]="uploading">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Tags (comma-separated)</label>
+        <input type="text" class="input" [(ngModel)]="tags" placeholder="onboarding, handbook, hr" maxlength="500">
+      </div>
+
+      <div class="error-bar" *ngIf="error">{{ error }}</div>
+
+    </div>
+
+    <div class="modal-foot">
+      <button class="btn-ghost-sm" (click)="close.emit()">Cancel</button>
+      <button class="btn-primary-sm" (click)="submit()" [disabled]="!isValid() || submitting">
+        {{ submitting ? 'Adding...' : 'Add' }}
+      </button>
+    </div>
+
+  </div>
+</div>

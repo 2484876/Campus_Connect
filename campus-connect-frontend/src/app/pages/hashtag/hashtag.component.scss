@@ -1,0 +1,68 @@
+.tag-header {
+  background: linear-gradient(135deg, var(--primary-light) 0%, var(--bg-card) 100%);
+
+  .tag-display {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--primary);
+    letter-spacing: -0.02em;
+  }
+
+  .subtitle {
+    color: var(--text-secondary);
+    font-size: 13px;
+    margin: 4px 0 0;
+  }
+}
+
+.post-card .post-header {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+
+  .author-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .author-name {
+    font-weight: 700;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .author-position {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+  }
+}
+
+.post-content {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.post-image {
+  width: 100%;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.post-stats {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}

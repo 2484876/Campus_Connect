@@ -1,0 +1,112 @@
+<div class="modal-backdrop" (click)="close.emit()">
+  <div class="modal-frame" (click)="$event.stopPropagation()">
+
+    <div class="modal-head">
+      <h3>New event</h3>
+      <button class="icon-btn" (click)="close.emit()" title="Close">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+      </button>
+    </div>
+
+    <div class="modal-body">
+
+      <div class="cover-zone" [class.has-cover]="form.coverUrl">
+        <img *ngIf="form.coverUrl" [src]="form.coverUrl" class="cover-img">
+        <div *ngIf="!form.coverUrl" class="cover-placeholder">
+          <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><polyline points="21 15 16 10 5 21" /></svg>
+          <span>Cover image (optional)</span>
+        </div>
+        <label class="cover-btn" [class.uploading]="uploadingCover">
+          {{ uploadingCover ? 'Uploading...' : (form.coverUrl ? 'Replace' : 'Upload') }}
+          <input type="file" accept="image/*" hidden (change)="onCoverSelected($event)" [disabled]="uploadingCover">
+        </label>
+        <button *ngIf="form.coverUrl" class="cover-btn cover-remove" (click)="removeCover()">Remove</button>
+      </div>
+
+      <div class="field">
+        <label>Title</label>
+        <input type="text" class="input" [(ngModel)]="form.title" placeholder="Give your event a name" maxlength="200">
+      </div>
+
+      <div class="field">
+        <label>Description</label>
+        <textarea class="input" [(ngModel)]="form.description" rows="3" placeholder="What's it about?"></textarea>
+      </div>
+
+      <div class="field">
+        <label>Type</label>
+        <div class="seg">
+          <button class="seg-btn" [class.active]="form.eventType === 'PHYSICAL'" (click)="setType('PHYSICAL')">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
+            In-person
+          </button>
+          <button class="seg-btn" [class.active]="form.eventType === 'VIRTUAL'" (click)="setType('VIRTUAL')">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" /></svg>
+            Online
+          </button>
+          <button class="seg-btn" [class.active]="form.eventType === 'HYBRID'" (click)="setType('HYBRID')">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></svg>
+            Hybrid
+          </button>
+        </div>
+      </div>
+
+      <div class="field" *ngIf="form.eventType !== 'VIRTUAL'">
+        <label>Location {{ form.eventType === 'PHYSICAL' ? '*' : '' }}</label>
+        <input type="text" class="input" [(ngModel)]="form.location" placeholder="e.g. Block A, 5th floor">
+      </div>
+
+      <div class="field" *ngIf="form.eventType !== 'PHYSICAL'">
+        <label>Meeting link {{ form.eventType === 'VIRTUAL' ? '*' : '' }}</label>
+        <input type="url" class="input" [(ngModel)]="form.virtualLink" placeholder="https://...">
+      </div>
+
+      <div class="field">
+        <label>Category</label>
+        <div class="cat-row">
+          <button *ngFor="let c of categories"
+                  class="cat-btn"
+                  [class.active]="form.category === c.value"
+                  (click)="form.category = c.value">
+            {{ c.label }}
+          </button>
+        </div>
+      </div>
+
+      <div class="row-2">
+        <div class="field">
+          <label>Starts *</label>
+          <input type="datetime-local" class="input" [(ngModel)]="form.eventDate">
+        </div>
+        <div class="field">
+          <label>Ends</label>
+          <input type="datetime-local" class="input" [(ngModel)]="form.eventEndDate">
+        </div>
+      </div>
+
+      <div class="row-2">
+        <div class="field">
+          <label>Max attendees</label>
+          <input type="number" class="input" [(ngModel)]="form.maxParticipants" placeholder="Unlimited" min="1">
+        </div>
+        <div class="field check-field">
+          <label class="check-label">
+            <input type="checkbox" [(ngModel)]="form.showAttendees">
+            <span>Show attendee list to everyone</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="error-bar" *ngIf="error">{{ error }}</div>
+
+    </div>
+
+    <div class="modal-foot">
+      <button class="btn-ghost-sm" (click)="close.emit()">Cancel</button>
+      <button class="btn-primary-sm" (click)="submit()" [disabled]="!isValid() || submitting || uploadingCover">
+        {{ submitting ? 'Creating...' : 'Create' }}
+      </button>
+    </div>
+
+  </div>
+</div>

@@ -1,0 +1,22 @@
+<div class="trending-card">
+  <div class="trending-header">
+    <h6>Trending now</h6>
+    <span class="dot"></span>
+  </div>
+  <div *ngIf="loading" class="loading-state">
+    <div class="skeleton-line" *ngFor="let i of [1,2,3,4]"></div>
+  </div>
+  <div *ngIf="!loading && trending.length === 0" class="empty">
+    <p>No trending tags yet</p>
+    <small>Use #tags in your posts</small>
+  </div>
+  <a *ngFor="let tag of trending; let i = index"
+     [routerLink]="['/hashtag', tag.tag]"
+     class="trending-row">
+    <div class="rank">{{ i + 1 }}</div>
+    <div class="tag-info">
+      <div class="tag-name">#{{ tag.tag }}</div>
+      <div class="tag-count">{{ tag.usageCount }} {{ tag.usageCount === 1 ? 'post' : 'posts' }}</div>
+    </div>
+  </a>
+</div>

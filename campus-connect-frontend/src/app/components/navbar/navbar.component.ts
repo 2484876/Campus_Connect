@@ -7,13 +7,15 @@ import { ApiService } from '../../services/api.service';
 import { WebSocketService } from '../../services/websocket.service';
 import { NotificationStateService } from '../../services/notification-state.service';
 import { MessageStateService } from '../../services/message-state.service';
+import { ThemeService } from '../../services/theme.service';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
+import { SearchModalComponent } from '../search-modal/search-modal.component';
 
 @Component({
   selector: 'app-navbar',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule, SearchModalComponent],
   templateUrl: './navbar.component.html',
   styleUrls: ['./navbar.component.scss']
 })
@@ -21,12 +23,14 @@ export class NavbarComponent implements OnInit, OnDestroy {
   user: any;
   unreadCount = 0;
   messageCount = 0;
-  searchQuery = '';
   userProfilePic = '';
   showDropdown = false;
+  showSearch = false;
+  currentTheme: 'light' | 'dark' = 'light';
   private notifSub?: Subscription;
   private countSub?: Subscription;
   private msgCountSub?: Subscription;
+  private themeSub?: Subscription;
 
   constructor(
     public authService: AuthService,
@@ -34,6 +38,7 @@ export class NavbarComponent implements OnInit, OnDestroy {
     private ws: WebSocketService,
     private notifState: NotificationStateService,
     private msgState: MessageStateService,
+    private theme: ThemeService,
     private router: Router,
     private cdr: ChangeDetectorRef,
     private elementRef: ElementRef
@@ -41,7 +46,6 @@ export class NavbarComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.user = this.authService.getCurrentUser();
-
     this.notifState.refreshCount();
     this.msgState.refreshCount();
 
@@ -49,9 +53,12 @@ export class NavbarComponent implements OnInit, OnDestroy {
       this.unreadCount = count;
       this.cdr.detectChanges();
     });
-
     this.msgCountSub = this.msgState.unreadCount$.subscribe(count => {
       this.messageCount = count;
+      this.cdr.detectChanges();
+    });
+    this.themeSub = this.theme.theme$.subscribe(t => {
+      this.currentTheme = t;
       this.cdr.detectChanges();
     });
 
@@ -71,6 +78,7 @@ export class NavbarComponent implements OnInit, OnDestroy {
     this.notifSub?.unsubscribe();
     this.countSub?.unsubscribe();
     this.msgCountSub?.unsubscribe();
+    this.themeSub?.unsubscribe();
   }
 
   @HostListener('document:click', ['$event'])
@@ -86,11 +94,28 @@ export class NavbarComponent implements OnInit, OnDestroy {
     }
   }
 
-  onSearch(): void {
-    if (this.searchQuery.trim()) {
-      this.router.navigate(['/connections'], { queryParams: { q: this.searchQuery } });
+  @HostListener('document:keydown', ['$event'])
+  onKey(event: KeyboardEvent): void {
+    if ((event.ctrlKey || event.metaKey) && event.key === 'k') {
+      event.preventDefault();
+      this.openSearch();
+    }
+    if (event.key === 'Escape' && this.showSearch) {
+      this.closeSearch();
     }
   }
+
+  openSearch(): void {
+    this.showSearch = true;
+    this.cdr.detectChanges();
+  }
+
+  closeSearch(): void {
+    this.showSearch = false;
+    this.cdr.detectChanges();
+  }
+
+  toggleTheme(): void { this.theme.toggle(); }
 
   toggleDropdown(event: Event): void {
     event.stopPropagation();

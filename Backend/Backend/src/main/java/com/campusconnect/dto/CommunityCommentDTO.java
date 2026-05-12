@@ -18,6 +18,7 @@ public class CommunityCommentDTO {
     private int score;
     private int userVote;
     private int replyCount;
+    private boolean acceptedAnswer;
     private List<CommunityCommentDTO> replies;
     private LocalDateTime createdAt;
 }

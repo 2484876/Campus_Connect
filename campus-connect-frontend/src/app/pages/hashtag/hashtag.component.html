@@ -1,0 +1,45 @@
+<div class="feed-container">
+  <div class="tag-header card">
+    <div class="card-body">
+      <div class="tag-display">#{{ tag }}</div>
+      <p class="subtitle">{{ posts.length }} {{ posts.length === 1 ? 'post' : 'posts' }} with this tag</p>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="empty-state">
+    <p>Loading...</p>
+  </div>
+
+  <div *ngIf="!loading && posts.length === 0" class="empty-state card">
+    <div class="card-body">
+      <p>No posts found for <strong>#{{ tag }}</strong></p>
+    </div>
+  </div>
+
+  <div *ngFor="let post of posts" class="card post-card">
+    <div class="card-body">
+      <div class="post-header">
+        <img [src]="post.authorProfilePic || 'https://ui-avatars.com/api/?name=' + post.authorName + '&background=2d5f3f&color=fff'"
+             class="avatar clickable"
+             [routerLink]="['/profile', post.authorId]">
+        <div class="author-info clickable" [routerLink]="['/profile', post.authorId]">
+          <div class="author-name">
+            {{ post.authorName }}
+            <span class="badge-role" [ngClass]="'badge-' + post.authorRole.toLowerCase()">
+              {{ post.authorRole.replace('_', ' ') }}
+            </span>
+          </div>
+          <div class="author-position">{{ post.authorPosition }} · {{ post.authorDepartment }}</div>
+          <div class="time-ago">{{ formatDate(post.createdAt) }}</div>
+        </div>
+      </div>
+      <div class="post-content" [innerHTML]="post.content | hashtagLinks"></div>
+      <img *ngIf="post.imageUrl" [src]="post.imageUrl" class="post-image">
+      <div class="post-stats">
+        <span>{{ post.likeCount }} likes</span>
+        <span>·</span>
+        <span>{{ post.commentCount }} comments</span>
+      </div>
+    </div>
+  </div>
+</div>

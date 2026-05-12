@@ -2,34 +2,35 @@
   <div class="nav-inner">
     <div class="nav-left">
       <a routerLink="/feed" class="logo">
-        <img src="https://tse1.mm.bing.net/th/id/OIP.PSvbttULjl1sh5ocAvDpZAHaBt?rs=1&pid=ImgDetMain&o=7&rm=3" alt="Logo" style="height: 28px;">
+        <div class="logo-mark">CC</div>
       </a>
-      <div class="search-box">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#666" viewBox="0 0 16 16">
-          <path d="M11.742 10.344a6.5 6.5 0 10-1.397 1.398h-.001l3.85 3.85a1 1 0 001.415-1.414l-3.85-3.85zm-5.242.656a5 5 0 110-10 5 5 0 010 10z" />
+      <button class="search-box" (click)="openSearch()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="11" cy="11" r="8" />
+          <path d="m21 21-4.35-4.35" />
         </svg>
-        <input type="text" [(ngModel)]="searchQuery" placeholder="Search" (keyup.enter)="onSearch()">
-      </div>
+        <span>Search</span>
+        <kbd>⌘K</kbd>
+      </button>
     </div>
 
     <div class="nav-links">
-
       <a routerLink="/feed" routerLinkActive="active" class="nav-item">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 24 24">
           <path d="M23 9v2h-2v7a3 3 0 01-3 3h-4v-6h-4v6H6a3 3 0 01-3-3v-7H1V9l11-7z" />
         </svg>
         <span>Home</span>
       </a>
 
       <a routerLink="/connections" routerLinkActive="active" class="nav-item">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 24 24">
           <path d="M12 16v6H3v-6a3 3 0 013-3h3a3 3 0 013 3zm5.5-3A3.5 3.5 0 1014 9.5a3.5 3.5 0 003.5 3.5zm1 2h-2a2.5 2.5 0 00-2.5 2.5V22h7v-4.5a2.5 2.5 0 00-2.5-2.5zM7.5 2A4.5 4.5 0 1012 6.5 4.49 4.49 0 007.5 2z" />
         </svg>
         <span>Network</span>
       </a>
 
       <a routerLink="/chat" routerLinkActive="active" class="nav-item nav-msg-item">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 24 24">
           <path d="M16 4H8a7 7 0 000 14h4v4l8.16-5.39A6.78 6.78 0 0023 11a7 7 0 00-7-7z" />
         </svg>
         <span>Messaging</span>
@@ -37,44 +38,68 @@
       </a>
 
       <a routerLink="/events" routerLinkActive="active" class="nav-item">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 24 24">
           <path d="M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V6a2 2 0 00-2-2zm0 16H5V10h14zM9 14H7v-2h2zm4 0h-2v-2h2zm4 0h-2v-2h2zm-8 4H7v-2h2zm4 0h-2v-2h2zm4 0h-2v-2h2z" />
         </svg>
         <span>Events</span>
       </a>
 
       <a routerLink="/communities" routerLinkActive="active" class="nav-item">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 16 16">
           <path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1zm4-6a3 3 0 100-6 3 3 0 000 6m-5.784 6A2.24 2.24 0 015 13c0-1.355.68-2.75 1.936-3.72A6.3 6.3 0 005 9c-4 0-5 3-5 4s1 1 1 1zM4.5 8a2.5 2.5 0 100-5 2.5 2.5 0 000 5" />
         </svg>
         <span>Groups</span>
       </a>
 
       <a routerLink="/notifications" class="nav-item nav-notif-item">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 24 24">
           <path d="M22 19h-8.28a2 2 0 11-3.44 0H2v-1a4.52 4.52 0 011.17-2.83l1-1.17h15.7l1 1.17A4.42 4.42 0 0122 18zM18.21 7.44A6.27 6.27 0 0012 2a6.27 6.27 0 00-6.21 5.44L5 13h14z" />
         </svg>
         <span>Alerts</span>
         <span class="notif-badge" *ngIf="unreadCount > 0">{{ unreadCount > 9 ? '9+' : unreadCount }}</span>
       </a>
 
+      <button class="theme-toggle" (click)="toggleTheme()" [title]="currentTheme === 'light' ? 'Dark mode' : 'Light mode'">
+        <svg *ngIf="currentTheme === 'light'" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+        </svg>
+        <svg *ngIf="currentTheme === 'dark'" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="5" />
+          <line x1="12" y1="1" x2="12" y2="3" />
+          <line x1="12" y1="21" x2="12" y2="23" />
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+          <line x1="1" y1="12" x2="3" y2="12" />
+          <line x1="21" y1="12" x2="23" y2="12" />
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+        </svg>
+      </button>
+
       <div class="nav-item profile-trigger" (click)="toggleDropdown($event)">
-        <img [src]="userProfilePic || 'https://ui-avatars.com/api/?name=' + (user?.name || 'U') + '&background=0a66c2&color=fff&size=24'" class="nav-avatar">
+        <img [src]="userProfilePic || 'https://ui-avatars.com/api/?name=' + (user?.name || 'U') + '&background=2d5f3f&color=fff&size=28'" class="nav-avatar">
         <span>Me ▾</span>
         <div class="profile-dropdown" *ngIf="showDropdown">
           <div class="dropdown-header">
-            <img [src]="'https://ui-avatars.com/api/?name=' + (user?.name || 'U') + '&background=0a66c2&color=fff&size=48'" class="avatar">
+            <img [src]="userProfilePic || 'https://ui-avatars.com/api/?name=' + (user?.name || 'U') + '&background=2d5f3f&color=fff&size=48'" class="avatar">
             <div>
               <strong>{{ user?.name }}</strong>
               <p>{{ user?.role }}</p>
             </div>
           </div>
-          <a [routerLink]="['/profile', user?.userId]" class="dropdown-item" (click)="showDropdown = false">View Profile</a>
+          <a [routerLink]="['/profile', user?.userId]" class="dropdown-item" (click)="showDropdown = false">View profile</a>
+          <a routerLink="/bookmarks" class="dropdown-item" (click)="showDropdown = false">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="margin-right:8px">
+              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+            </svg>
+            Saved posts
+          </a>
           <div class="separator"></div>
-          <a class="dropdown-item text-danger" (click)="logout()">Sign Out</a>
+          <a class="dropdown-item text-danger" (click)="logout()">Sign out</a>
         </div>
       </div>
-
     </div>
   </div>
 </nav>
+
+<app-search-modal *ngIf="showSearch" (close)="closeSearch()"></app-search-modal>

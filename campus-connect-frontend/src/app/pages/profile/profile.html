@@ -1,9 +1,9 @@
 <div class="feed-container" *ngIf="!loading && user">
 
   <div class="card profile-card">
-    <div class="profile-banner" [ngStyle]="{'background-image': user.bannerUrl ? 'url(' + user.bannerUrl + ')' : 'linear-gradient(135deg, #0a66c2 0%, #004182 100%)'}">
+    <div class="profile-banner" [ngStyle]="{'background-image': user.bannerUrl ? 'url(' + user.bannerUrl + ')' : 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)'}">
       <label class="banner-edit-btn" *ngIf="isOwnProfile">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="white" viewBox="0 0 16 16"><path d="M15 12a1 1 0 01-1 1H2a1 1 0 01-1-1V6a1 1 0 011-1h1.172a3 3 0 002.12-.879l.83-.828A1 1 0 016.827 3h2.344a1 1 0 01.707.293l.828.828A3 3 0 0012.828 5H14a1 1 0 011 1z" /></svg>
+        <svg width="14" height="14" fill="white" viewBox="0 0 16 16"><path d="M15 12a1 1 0 01-1 1H2a1 1 0 01-1-1V6a1 1 0 011-1h1.172a3 3 0 002.12-.879l.83-.828A1 1 0 016.827 3h2.344a1 1 0 01.707.293l.828.828A3 3 0 0012.828 5H14a1 1 0 011 1z" /></svg>
         <span *ngIf="!uploadingBanner">Edit cover</span>
         <span *ngIf="uploadingBanner">Uploading...</span>
         <input type="file" accept="image/*" (change)="onBannerSelected($event)" hidden>
@@ -15,7 +15,7 @@
         <img [src]="user.profilePicUrl || getAvatar(user.name)" class="avatar-lg profile-avatar">
         <label class="avatar-upload-overlay" *ngIf="isOwnProfile">
           <div class="camera-icon" *ngIf="!uploadingAvatar">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="white" viewBox="0 0 16 16"><path d="M15 12a1 1 0 01-1 1H2a1 1 0 01-1-1V6a1 1 0 011-1h1.172a3 3 0 002.12-.879l.83-.828A1 1 0 016.827 3h2.344a1 1 0 01.707.293l.828.828A3 3 0 0012.828 5H14a1 1 0 011 1zM2 4a2 2 0 00-2 2v6a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1.172a2 2 0 01-1.414-.586l-.828-.828A2 2 0 009.172 2H6.828a2 2 0 00-1.414.586l-.828.828A2 2 0 013.172 4z" /><path d="M8 11a2.5 2.5 0 110-5 2.5 2.5 0 010 5zm0 1a3.5 3.5 0 100-7 3.5 3.5 0 000 7z" /></svg>
+            <svg width="20" height="20" fill="white" viewBox="0 0 16 16"><path d="M15 12a1 1 0 01-1 1H2a1 1 0 01-1-1V6a1 1 0 011-1h1.172a3 3 0 002.12-.879l.83-.828A1 1 0 016.827 3h2.344a1 1 0 01.707.293l.828.828A3 3 0 0012.828 5H14a1 1 0 011 1z" /><path d="M8 11a2.5 2.5 0 110-5 2.5 2.5 0 010 5zm0 1a3.5 3.5 0 100-7 3.5 3.5 0 000 7z" /></svg>
           </div>
           <div class="spinner-border spinner-border-sm text-white" *ngIf="uploadingAvatar"></div>
           <input type="file" accept="image/*" (change)="onAvatarSelected($event)" hidden>
@@ -24,7 +24,7 @@
 
       <div class="profile-kebab" *ngIf="isOwnProfile">
         <button class="kebab-btn" (click)="toggleProfileMenu()">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+          <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
             <path d="M9.5 13a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0-5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0-5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
           </svg>
         </button>
@@ -37,6 +37,9 @@
         <button class="btn btn-primary" *ngIf="!user.connectionStatus" (click)="connect()">Connect</button>
         <button class="btn btn-light" *ngIf="user.connectionStatus === 'PENDING'" disabled>Pending</button>
         <button class="btn btn-outline-primary" *ngIf="user.connectionStatus === 'ACCEPTED'" (click)="message()">Message</button>
+        <button class="btn btn-light kudos-btn" (click)="openKudos()" title="Give kudos">
+          🙌 Kudos
+        </button>
         <span class="connected-badge" *ngIf="user.connectionStatus === 'ACCEPTED'">Connected</span>
       </div>
 
@@ -48,7 +51,10 @@
         </p>
         <p class="profile-bio" *ngIf="user.bio">{{ user.bio }}</p>
         <p class="profile-email">{{ user.email }}</p>
-        <p class="profile-connections"><strong>{{ user.connectionCount }}</strong> connections</p>
+        <p class="profile-connections">
+          <strong>{{ user.connectionCount }}</strong> connections
+          <span *ngIf="user.birthday"> · 🎂 {{ formatBirthdayDisplay(user.birthday) }}</span>
+        </p>
       </div>
 
       <div class="profile-skills" *ngIf="user.skills && user.skills.length > 0">
@@ -69,11 +75,83 @@
         <div class="col-md-6 mb-3"><label class="form-label">Position</label><input type="text" class="form-control" [(ngModel)]="editForm.position"></div>
       </div>
       <div class="mb-3"><label class="form-label">Bio</label><textarea class="form-control" [(ngModel)]="editForm.bio" rows="3"></textarea></div>
-      <div class="mb-3"><label class="form-label">Phone</label><input type="text" class="form-control" [(ngModel)]="editForm.phone"></div>
+      <div class="row">
+        <div class="col-md-6 mb-3"><label class="form-label">Phone</label><input type="text" class="form-control" [(ngModel)]="editForm.phone"></div>
+      </div>
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">🎂 Birthday</label>
+          <input type="date" class="form-control" [(ngModel)]="editForm.birthday">
+          <small class="hint">We'll only show the month and day to others.</small>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">💼 Work anniversary</label>
+          <input type="date" class="form-control" [(ngModel)]="editForm.workAnniversary">
+          <small class="hint">Date you joined the company.</small>
+        </div>
+      </div>
       <div class="d-flex gap-2">
         <button class="btn btn-primary" (click)="saveProfile()">Save Changes</button>
         <button class="btn btn-outline-secondary" (click)="editing = false">Cancel</button>
       </div>
+    </div>
+  </div>
+
+  <div class="card" *ngIf="earnedAchievements().length > 0">
+    <div class="card-body">
+      <div class="section-header-row">
+        <h5>Achievements</h5>
+        <a routerLink="/achievements" *ngIf="isOwnProfile" class="see-all">See all</a>
+      </div>
+      <div class="ach-strip">
+        <div *ngFor="let a of earnedAchievements().slice(0, 8)" class="ach-chip" [title]="a.description">
+          <span class="ach-emoji">{{ a.icon }}</span>
+          <span class="ach-text">{{ a.name }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" *ngIf="receivedKudos.length > 0">
+    <div class="card-body">
+      <div class="section-header-row">
+        <h5 class="kudos-title">🙌 Kudos received <span class="kudos-count">{{ receivedKudos.length }}</span></h5>
+      </div>
+      <div class="kudos-strip-wrapper">
+        <button class="scroll-arrow scroll-arrow--left" (click)="scrollKudos(-1)" *ngIf="receivedKudos.length > 5">
+          <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M11.354 1.646a.5.5 0 010 .708L5.707 8l5.647 5.646a.5.5 0 01-.708.708l-6-6a.5.5 0 010-.708l6-6a.5.5 0 01.708 0z" /></svg>
+        </button>
+        <div class="kudos-strip" #kudosStrip>
+          <div *ngFor="let k of receivedKudos" class="kudos-story" (click)="openKudosDetail(k)">
+            <div class="kudos-avatar-ring">
+              <img [src]="k.giverProfilePic || getAvatar(k.giverName)" class="kudos-avatar-img" [alt]="k.giverName">
+              <span class="kudos-category-badge" [title]="k.category">{{ getCategoryEmoji(k.category) }}</span>
+            </div>
+            <span class="kudos-giver-name">{{ getFirstName(k.giverName) }}</span>
+          </div>
+        </div>
+        <button class="scroll-arrow scroll-arrow--right" (click)="scrollKudos(1)" *ngIf="receivedKudos.length > 5">
+          <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M4.646 1.646a.5.5 0 01.708 0l6 6a.5.5 0 010 .708l-6 6a.5.5 0 01-.708-.708L10.293 8 4.646 2.354a.5.5 0 010-.708z" /></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="kudos-detail-overlay" *ngIf="selectedKudos" (click)="closeKudosDetail()">
+    <div class="kudos-detail-card" (click)="$event.stopPropagation()">
+      <button class="kudos-detail-close" (click)="closeKudosDetail()">
+        <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path d="M2.146 2.854a.5.5 0 11.708-.708L8 7.293l5.146-5.147a.5.5 0 01.708.708L8.707 8l5.147 5.146a.5.5 0 01-.708.708L8 8.707l-5.146 5.147a.5.5 0 01-.708-.708L7.293 8 2.146 2.854z" /></svg>
+      </button>
+      <div class="kudos-detail-header">
+        <div class="kudos-avatar-ring kudos-avatar-ring--lg">
+          <img [src]="selectedKudos.giverProfilePic || getAvatar(selectedKudos.giverName)" class="kudos-avatar-img">
+          <span class="kudos-category-badge kudos-category-badge--lg">{{ getCategoryEmoji(selectedKudos.category) }}</span>
+        </div>
+        <a [routerLink]="['/profile', selectedKudos.giverId]" class="kudos-detail-name" (click)="closeKudosDetail()">{{ selectedKudos.giverName }}</a>
+        <span class="kudos-detail-category">{{ getCategoryEmoji(selectedKudos.category) }} {{ selectedKudos.category }}</span>
+      </div>
+      <p class="kudos-detail-message" *ngIf="selectedKudos.message">"{{ selectedKudos.message }}"</p>
+      <span class="kudos-detail-time">{{ timeAgo(selectedKudos.createdAt) }}</span>
     </div>
   </div>
 
@@ -113,7 +191,7 @@
 
       <div class="experience-item" *ngFor="let exp of user.experiences; let i = index">
         <div class="exp-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="#666" viewBox="0 0 16 16"><path d="M6.5 1A1.5 1.5 0 005 2.5V3H1.5A1.5 1.5 0 000 4.5v8A1.5 1.5 0 001.5 14h13a1.5 1.5 0 001.5-1.5v-8A1.5 1.5 0 0014.5 3H11v-.5A1.5 1.5 0 009.5 1h-3zm0 1h3a.5.5 0 01.5.5V3H6v-.5a.5.5 0 01.5-.5z" /></svg>
+          <svg width="40" height="40" fill="#666" viewBox="0 0 16 16"><path d="M6.5 1A1.5 1.5 0 005 2.5V3H1.5A1.5 1.5 0 000 4.5v8A1.5 1.5 0 001.5 14h13a1.5 1.5 0 001.5-1.5v-8A1.5 1.5 0 0014.5 3H11v-.5A1.5 1.5 0 009.5 1h-3zm0 1h3a.5.5 0 01.5.5V3H6v-.5a.5.5 0 01.5-.5z" /></svg>
         </div>
         <div class="exp-details">
           <div class="exp-title">{{ exp.title }}</div>
@@ -126,7 +204,7 @@
         </div>
         <div class="exp-kebab" *ngIf="isOwnProfile">
           <button class="kebab-btn" (click)="toggleExpMenu(i)">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
               <path d="M9.5 13a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0-5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0-5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
             </svg>
           </button>
@@ -136,7 +214,7 @@
         </div>
       </div>
 
-      <div *ngIf="!user.experiences || user.experiences.length === 0" style="color: #999; font-size: 13px; padding: 12px 0;">
+      <div *ngIf="!user.experiences || user.experiences.length === 0" style="color: var(--text-muted); font-size: 13px; padding: 12px 0;">
         No experience added yet
       </div>
     </div>
@@ -179,7 +257,7 @@
           <div class="comment-input-wrapper">
             <input [(ngModel)]="post.newComment" placeholder="Add a comment..." class="form-control comment-input" (keyup.enter)="addComment(post)">
             <button class="btn-send" (click)="addComment(post)" [disabled]="!post.newComment?.trim()">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="#0a66c2" viewBox="0 0 16 16"><path d="M15.854.146a.5.5 0 01.11.54l-5.819 14.547a.75.75 0 01-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 01.124-1.33L15.314.037a.5.5 0 01.54.11z" /></svg>
+              <svg width="18" height="18" fill="var(--primary)" viewBox="0 0 16 16"><path d="M15.854.146a.5.5 0 01.11.54l-5.819 14.547a.75.75 0 01-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 01.124-1.33L15.314.037a.5.5 0 01.54.11z" /></svg>
             </button>
           </div>
         </div>
@@ -191,3 +269,9 @@
 </div>
 
 <div class="text-center p-5" *ngIf="loading"><div class="spinner-border text-primary"></div></div>
+
+<app-kudos-dialog *ngIf="showKudosDialog && user"
+                  [receiverId]="user.id"
+                  [receiverName]="user.name"
+                  (close)="closeKudos()"
+                  (sent)="onKudosSent()"></app-kudos-dialog>

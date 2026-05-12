@@ -6,6 +6,7 @@ import com.campusconnect.enums.*;
 import com.campusconnect.exception.*;
 import com.campusconnect.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +18,9 @@ public class ConnectionService {
     private final ConnectionRepository connectionRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+
+    @Autowired(required = false)
+    private AchievementService achievementService;
 
     @Transactional
     public ConnectionDTO sendRequest(Long senderId, Long receiverId) {
@@ -56,7 +60,21 @@ public class ConnectionService {
         notificationService.createNotification(
                 conn.getSender().getId(), userId, NotificationType.CONNECTION_ACCEPTED, connectionId);
 
+        try {
+            if (achievementService != null) {
+                awardConnectionAchievements(userId);
+                awardConnectionAchievements(conn.getSender().getId());
+            }
+        } catch (Exception ignored) {}
+
         return mapToDTO(conn, userId);
+    }
+
+    private void awardConnectionAchievements(Long userId) {
+        int count = connectionRepository.countAcceptedConnections(userId);
+        if (count >= 1) achievementService.award(userId, "FIRST_CONNECTION");
+        if (count >= 10) achievementService.award(userId, "TEN_CONNECTIONS");
+        if (count >= 50) achievementService.award(userId, "FIFTY_CONNECTIONS");
     }
 
     @Transactional

@@ -1,0 +1,27 @@
+<div class="streak-card" *ngIf="streak && !loading">
+  <div class="streak-top">
+    <div class="streak-flame" [class.active]="streak.currentStreak > 0">🔥</div>
+    <div class="streak-num">{{ streak.currentStreak }}</div>
+  </div>
+  <div class="streak-label">
+    {{ streak.currentStreak === 0 ? 'Start your streak' : (streak.currentStreak === 1 ? 'day streak' : 'day streak') }}
+  </div>
+
+  <div class="streak-stats">
+    <div>
+      <span class="num">{{ streak.longestStreak }}</span>
+      <span class="lbl">Longest</span>
+    </div>
+    <div>
+      <span class="num">{{ streak.totalCheckIns }}</span>
+      <span class="lbl">Total days</span>
+    </div>
+  </div>
+
+  <div class="streak-status" *ngIf="streak.checkedInToday">
+    <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+    Checked in today
+  </div>
+</div>

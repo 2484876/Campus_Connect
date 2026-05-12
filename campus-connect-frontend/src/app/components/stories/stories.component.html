@@ -1,0 +1,100 @@
+<div class="stories-bar" *ngIf="!loading">
+  <div class="story-bubble own" (click)="openComposer()">
+    <div class="bubble-ring add-ring">
+      <img [src]="myAvatar" class="bubble-avatar">
+      <div class="add-icon">+</div>
+    </div>
+    <span class="bubble-name">Your story</span>
+  </div>
+
+  <div class="story-bubble"
+       *ngFor="let g of groups; let i = index"
+       (click)="openViewer(i)">
+    <div class="bubble-ring" [class.viewed]="g.allViewed">
+      <img [src]="avatarFor(g.userName, g.userProfilePic)" class="bubble-avatar">
+    </div>
+    <span class="bubble-name">{{ g.userId === currentUserId ? 'You' : g.userName }}</span>
+  </div>
+</div>
+
+<div class="story-viewer" *ngIf="viewerOpen" (click)="closeViewer()">
+  <div class="viewer-inner" (click)="$event.stopPropagation()">
+    <button class="viewer-prev" (click)="prev()">‹</button>
+    <button class="viewer-next" (click)="next()">›</button>
+    <button class="viewer-close" (click)="closeViewer()">✕</button>
+
+    <ng-container *ngIf="currentStory() as story">
+      <div class="progress-bar-wrap">
+        <div *ngFor="let s of groups[activeGroupIdx].stories; let idx = index"
+             class="progress-bar">
+          <div class="progress-fill"
+               [style.width.%]="idx < activeStoryIdx ? 100 : (idx === activeStoryIdx ? progress : 0)"></div>
+        </div>
+      </div>
+
+      <div class="viewer-header">
+        <img [src]="avatarFor(story.userName, story.userProfilePic)" class="header-avatar">
+        <div class="header-name">{{ story.userName }}</div>
+        <div class="header-time">{{ formatTime(story.createdAt) }}</div>
+        <button *ngIf="story.userId === currentUserId" class="header-delete" (click)="deleteStory()">🗑</button>
+      </div>
+
+      <div class="viewer-content" [style.background]="!story.mediaUrl ? story.backgroundColor : '#000'">
+        <img *ngIf="story.mediaUrl" [src]="story.mediaUrl" class="viewer-media">
+        <div *ngIf="story.caption" class="viewer-caption" [class.over-media]="story.mediaUrl">
+          {{ story.caption }}
+        </div>
+      </div>
+
+      <div class="viewer-footer" *ngIf="story.userId === currentUserId">
+        <span>👁 {{ story.viewCount }} {{ story.viewCount === 1 ? 'view' : 'views' }}</span>
+      </div>
+    </ng-container>
+  </div>
+</div>
+
+<div class="story-composer" *ngIf="composerOpen" (click)="closeComposer()">
+  <div class="composer-inner" (click)="$event.stopPropagation()">
+    <div class="composer-header">
+      <h5>Create story</h5>
+      <button class="icon-btn" (click)="closeComposer()">✕</button>
+    </div>
+
+    <div class="composer-canvas" [style.background]="!composerMediaUrl ? composerBg : '#000'">
+      <img *ngIf="composerMediaUrl" [src]="composerMediaUrl" class="composer-media">
+      <textarea [(ngModel)]="composerCaption"
+                placeholder="Type something..."
+                class="composer-text"
+                [class.over-media]="composerMediaUrl"></textarea>
+    </div>
+
+    <div class="composer-controls">
+      <div class="color-row" *ngIf="!composerMediaUrl">
+        <button *ngFor="let c of bgColors"
+                class="color-dot"
+                [style.background]="c"
+                [class.selected]="composerBg === c"
+                (click)="composerBg = c"></button>
+      </div>
+
+      <div class="action-row">
+        <label class="media-btn" *ngIf="!composerMediaUrl">
+          <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M19 4H5a3 3 0 00-3 3v10a3 3 0 003 3h14a3 3 0 003-3V7a3 3 0 00-3-3zm-2 5a2 2 0 11-4 0 2 2 0 014 0z"/>
+          </svg>
+          <span>{{ uploading ? 'Uploading...' : 'Add image' }}</span>
+          <input type="file" accept="image/*" (change)="onFileSelected($event)" hidden [disabled]="uploading">
+        </label>
+        <button class="media-btn" *ngIf="composerMediaUrl" (click)="removeMedia()">
+          <span>Remove image</span>
+        </button>
+
+        <button class="btn btn-primary"
+                (click)="postStory()"
+                [disabled]="posting || uploading || (!composerCaption.trim() && !composerMediaUrl)">
+          {{ posting ? 'Sharing...' : 'Share story' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

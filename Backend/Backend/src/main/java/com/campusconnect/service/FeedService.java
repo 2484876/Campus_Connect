@@ -6,6 +6,8 @@ import com.campusconnect.enums.*;
 import com.campusconnect.exception.*;
 import com.campusconnect.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +23,15 @@ public class FeedService {
     private final LikeRepository likeRepository;
     private final CommentRepository commentRepository;
     private final NotificationService notificationService;
+
+    @Autowired @Lazy
+    private HashtagService hashtagService;
+
+    @Autowired(required = false)
+    private BookmarkRepository bookmarkRepository;
+
+    @Autowired(required = false)
+    private AchievementService achievementService;
 
     public Page<PostDTO> getFeed(Long userId, int page, int size) {
         return postRepository.findFeedForUser(userId, PageRequest.of(page, size))
@@ -51,7 +62,22 @@ public class FeedService {
                 .user(user).content(req.getContent()).imageUrl(req.getImageUrl()).videoUrl(req.getVideoUrl())
                 .postType(req.getPostType() != null ? PostType.valueOf(req.getPostType()) : PostType.GENERAL)
                 .isActive(true).build();
-        return mapToDTO(postRepository.save(post), userId);
+        Post saved = postRepository.save(post);
+        try {
+            if (hashtagService != null && saved.getContent() != null) {
+                hashtagService.processPostTags(saved.getId(), saved.getContent());
+            }
+        } catch (Exception ignored) {}
+
+        try {
+            if (achievementService != null) {
+                long count = postRepository.findByUserId(userId, PageRequest.of(0, 1)).getTotalElements();
+                if (count == 1) achievementService.award(userId, "FIRST_POST");
+                if (count >= 10) achievementService.award(userId, "TEN_POSTS");
+            }
+        } catch (Exception ignored) {}
+
+        return mapToDTO(saved, userId);
     }
 
     @Transactional
@@ -110,11 +136,16 @@ public class FeedService {
                         .createdAt(c.getCreatedAt()).build());
     }
 
-    private PostDTO mapToDTO(Post post, Long currentUserId) {
+    public PostDTO mapToDTO(Post post, Long currentUserId) {
         User author = post.getUser();
         int likeCount = likeRepository.countByPostId(post.getId());
         int commentCount = commentRepository.countByPostIdAndIsActiveTrue(post.getId());
         boolean likedByMe = currentUserId != null && likeRepository.existsByPostIdAndUserId(post.getId(), currentUserId);
+        boolean bookmarkedByMe = false;
+        if (currentUserId != null && bookmarkRepository != null) {
+            try { bookmarkedByMe = bookmarkRepository.existsByUserIdAndPostId(currentUserId, post.getId()); }
+            catch (Exception ignored) {}
+        }
 
         List<CommentDTO> recentComments = commentRepository.findTop3ByPostId(post.getId(), PageRequest.of(0, 3))
                 .stream()
@@ -133,6 +164,7 @@ public class FeedService {
                 .authorProfilePic(author.getProfilePicUrl()).authorPosition(author.getPosition())
                 .authorRole(author.getRole().name()).authorDepartment(author.getDepartment())
                 .likeCount(likeCount).commentCount(commentCount).likedByMe(likedByMe)
+                .bookmarkedByMe(bookmarkedByMe)
                 .recentComments(recentComments).build();
     }
 }

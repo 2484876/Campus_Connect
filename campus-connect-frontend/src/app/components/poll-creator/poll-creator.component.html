@@ -1,0 +1,54 @@
+<div class="poll-creator">
+  <div class="poll-creator-header">
+    <span>Create a poll</span>
+    <button class="icon-btn" (click)="close.emit()">✕</button>
+  </div>
+
+  <input type="text"
+         class="form-control poll-q"
+         [(ngModel)]="question"
+         placeholder="Ask a question..."
+         maxlength="200">
+
+  <div class="poll-opts">
+    <div *ngFor="let opt of options; let i = index" class="poll-opt-row">
+      <input type="text"
+             class="form-control"
+             [(ngModel)]="options[i]"
+             [placeholder]="'Option ' + (i + 1)"
+             maxlength="100">
+      <button class="icon-btn" *ngIf="options.length > 2" (click)="removeOption(i)">✕</button>
+    </div>
+  </div>
+
+  <button class="add-opt-btn"
+          *ngIf="options.length < 6"
+          (click)="addOption()">
+    + Add option
+  </button>
+
+  <div class="poll-settings">
+    <label class="setting-row">
+      <input type="checkbox" [(ngModel)]="multiChoice">
+      <span>Allow multiple selections</span>
+    </label>
+
+    <div class="setting-row">
+      <label>Duration</label>
+      <select class="form-control" [(ngModel)]="durationHours">
+        <option [ngValue]="1">1 hour</option>
+        <option [ngValue]="6">6 hours</option>
+        <option [ngValue]="24">1 day</option>
+        <option [ngValue]="72">3 days</option>
+        <option [ngValue]="168">1 week</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="poll-actions">
+    <button class="btn btn-light" (click)="close.emit()">Cancel</button>
+    <button class="btn btn-primary" [disabled]="!isValid()" (click)="emit()">
+      Attach poll
+    </button>
+  </div>
+</div>

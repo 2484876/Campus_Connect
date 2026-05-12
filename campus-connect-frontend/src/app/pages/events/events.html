@@ -1,104 +1,110 @@
-<div class="feed-container">
+<div class="events-page">
 
-  <!-- Header -->
-  <div class="page-header">
+  <header class="events-header">
     <div>
-      <h4>Campus Events</h4>
-      <p>Discover what's happening on campus</p>
+      <h1>Events</h1>
+      <p>Workshops, hackathons, networking and more.</p>
     </div>
-    <button class="btn btn-primary" (click)="showCreate = !showCreate">
-      {{ showCreate ? 'Cancel' : '+ Create Event' }}
+    <button class="btn-primary-sm" (click)="openComposer()">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke-linecap="round" /></svg>
+      New event
+    </button>
+  </header>
+
+  <div class="tabs">
+    <button class="tab" [class.active]="activeTab === 'upcoming'" (click)="setTab('upcoming')">Upcoming</button>
+    <button class="tab" [class.active]="activeTab === 'this-week'" (click)="setTab('this-week')">This week</button>
+    <button class="tab" [class.active]="activeTab === 'past'" (click)="setTab('past')">Past</button>
+    <button class="tab" [class.active]="activeTab === 'mine'" (click)="setTab('mine')">My events</button>
+  </div>
+
+  <div class="filter-bar">
+    <button *ngFor="let c of categories"
+            class="filter-chip"
+            [class.active]="activeCategory === c.value"
+            (click)="setCategory(c.value)">
+      {{ c.label }}
     </button>
   </div>
 
-  <!-- Create Event Form -->
-  <div class="card" *ngIf="showCreate">
-    <div class="card-body">
-      <h5 class="mb-3">Create New Event</h5>
-
-      <div class="mb-3">
-        <label class="form-label">Event Title *</label>
-        <input type="text" class="form-control" [(ngModel)]="form.title" placeholder="Tech Fest 2026">
-      </div>
-
-      <div class="mb-3">
-        <label class="form-label">Description</label>
-        <textarea class="form-control" [(ngModel)]="form.description" rows="3" placeholder="Tell people about the event..."></textarea>
-      </div>
-
-      <div class="row">
-        <div class="col-md-6 mb-3">
-          <label class="form-label">Date & Time *</label>
-          <input type="datetime-local" class="form-control" [(ngModel)]="form.eventDate">
-        </div>
-        <div class="col-md-6 mb-3">
-          <label class="form-label">Location</label>
-          <input type="text" class="form-control" [(ngModel)]="form.location" placeholder="Main Auditorium">
-        </div>
-      </div>
-
-      <div class="mb-3">
-        <label class="form-label">Max Participants (optional)</label>
-        <input type="number" class="form-control" [(ngModel)]="form.maxParticipants" placeholder="100" style="max-width: 200px;">
-      </div>
-
-      <button class="btn btn-primary" (click)="createEvent()" [disabled]="creating || !form.title.trim() || !form.eventDate">
-        {{ creating ? 'Creating...' : 'Create Event' }}
-      </button>
-    </div>
+  <div *ngIf="loading && events.length === 0" class="state-block">
+    <div class="spinner-border spinner-border-sm"></div>
+    <span>Loading...</span>
   </div>
 
-  <!-- Events List -->
-  <div class="event-card card" *ngFor="let event of events">
-    <div class="card-body">
-      <div class="event-header">
-        <div class="event-date-badge">
-          <div class="event-month">{{ event.eventDate | date:'MMM' }}</div>
-          <div class="event-day">{{ event.eventDate | date:'dd' }}</div>
-        </div>
-        <div class="event-info">
-          <h5 class="event-title">{{ event.title }}</h5>
-          <div class="event-meta">
-            <span *ngIf="event.location">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="#666" viewBox="0 0 16 16">
-                <path d="M8 16s6-5.686 6-10A6 6 0 002 6c0 4.314 6 10 6 10zm0-7a3 3 0 110-6 3 3 0 010 6z" />
-              </svg>
-              {{ event.location }}
-            </span>
-            <span>
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="#666" viewBox="0 0 16 16">
-                <path d="M8 3.5a.5.5 0 00-1 0V8a.5.5 0 00.252.434l3.5 2a.5.5 0 00.496-.868L8 7.71V3.5z" />
-                <path d="M8 16A8 8 0 108 0a8 8 0 000 16zm7-8A7 7 0 111 8a7 7 0 0114 0z" />
-              </svg>
-              {{ formatDate(event.eventDate) }}
-            </span>
-          </div>
-        </div>
-        <span class="event-status" [class.upcoming]="isUpcoming(event.eventDate)" [class.past]="!isUpcoming(event.eventDate)">
-          {{ isUpcoming(event.eventDate) ? 'Upcoming' : 'Past' }}
-        </span>
+  <div *ngIf="!loading && events.length === 0" class="state-block empty">
+    <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+    <h5>Nothing here</h5>
+    <p>{{ activeTab === 'mine' ? 'You haven\'t created any events yet.' : 'Check back later or create one.' }}</p>
+    <button class="btn-primary-sm" (click)="openComposer()">New event</button>
+  </div>
+
+  <div class="event-list" *ngIf="events.length > 0">
+    <article *ngFor="let e of events" class="event-row" [class.past]="e.isPast" (click)="openEvent(e.id)">
+
+      <div class="row-date">
+        <div class="row-date-day">{{ formatDayMonth(e.eventDate).day }}</div>
+        <div class="row-date-mon">{{ formatDayMonth(e.eventDate).month }}</div>
       </div>
 
-      <p class="event-description" *ngIf="event.description">{{ event.description }}</p>
-
-      <div class="event-footer">
-        <span class="event-creator">By {{ event.createdByName }}</span>
-        <span *ngIf="event.maxParticipants" class="event-capacity">Max {{ event.maxParticipants }} participants</span>
+      <div class="row-cover" *ngIf="e.coverUrl || e.imageUrl" [style.background-image]="'url(' + (e.coverUrl || e.imageUrl) + ')'"></div>
+      <div class="row-cover row-cover-fallback" *ngIf="!e.coverUrl && !e.imageUrl">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /></svg>
       </div>
-    </div>
+
+      <div class="row-main">
+        <div class="row-meta">
+          <span class="meta-chip" *ngIf="e.isLive">
+            <span class="dot dot-live"></span> Live
+          </span>
+          <span class="meta-chip past-chip" *ngIf="e.isPast">Past</span>
+          <span class="meta-chip">{{ categoryMeta(e.category).label }}</span>
+          <span class="meta-chip">{{ e.eventType === 'VIRTUAL' ? 'Online' : (e.eventType === 'HYBRID' ? 'Hybrid' : 'In-person') }}</span>
+        </div>
+
+        <h3 class="row-title">{{ e.title }}</h3>
+
+        <div class="row-info">
+          <span class="info-bit">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+            {{ formatDateRange(e) }}
+          </span>
+          <span class="info-bit" *ngIf="e.location && e.eventType !== 'VIRTUAL'">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
+            {{ e.location }}
+          </span>
+          <span class="info-bit">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+            {{ e.goingCount }} going
+          </span>
+        </div>
+      </div>
+
+      <div class="row-actions" *ngIf="!e.isPast">
+        <button class="action-btn"
+                [class.active]="e.myRsvpStatus === 'GOING'"
+                (click)="setRsvp(e, 'GOING', $event)">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>
+          Going
+        </button>
+        <button class="action-btn ghost"
+                [class.active]="e.myRsvpStatus === 'INTERESTED'"
+                (click)="setRsvp(e, 'INTERESTED', $event)">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+          Interested
+        </button>
+      </div>
+    </article>
   </div>
 
-  <!-- Loading -->
-  <div class="text-center p-4" *ngIf="loading">
-    <div class="spinner-border spinner-border-sm text-primary"></div>
+  <div class="load-more" *ngIf="hasMore && events.length > 0">
+    <button class="btn-ghost-sm" (click)="loadMore()" [disabled]="loading">
+      {{ loading ? 'Loading...' : 'Load more' }}
+    </button>
   </div>
 
-  <!-- Empty -->
-  <div class="empty-state" *ngIf="!loading && events.length === 0">
-    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="#ccc" viewBox="0 0 16 16">
-      <path d="M11 6.5a.5.5 0 01.5-.5h1a.5.5 0 01.5.5v1a.5.5 0 01-.5.5h-1a.5.5 0 01-.5-.5v-1zm-3 0a.5.5 0 01.5-.5h1a.5.5 0 01.5.5v1a.5.5 0 01-.5.5h-1a.5.5 0 01-.5-.5v-1zm-5 3a.5.5 0 01.5-.5h1a.5.5 0 01.5.5v1a.5.5 0 01-.5.5h-1a.5.5 0 01-.5-.5v-1zm3 0a.5.5 0 01.5-.5h1a.5.5 0 01.5.5v1a.5.5 0 01-.5.5h-1a.5.5 0 01-.5-.5v-1z" />
-      <path d="M3.5 0a.5.5 0 01.5.5V1h8V.5a.5.5 0 011 0V1h1a2 2 0 012 2v11a2 2 0 01-2 2H2a2 2 0 01-2-2V3a2 2 0 012-2h1V.5a.5.5 0 01.5-.5zM1 4v10a1 1 0 001 1h12a1 1 0 001-1V4H1z" />
-    </svg>
-    <p>No events yet. Create the first campus event!</p>
-  </div>
 </div>
+
+<app-event-composer *ngIf="showComposer"
+                    (close)="closeComposer()"
+                    (created)="onEventCreated($event)"></app-event-composer>

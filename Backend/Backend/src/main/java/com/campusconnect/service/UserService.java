@@ -5,9 +5,12 @@ import com.campusconnect.entity.*;
 import com.campusconnect.exception.ResourceNotFoundException;
 import com.campusconnect.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -19,6 +22,9 @@ public class UserService {
     private final UserSkillRepository userSkillRepository;
     private final ConnectionRepository connectionRepository;
     private final ExperienceRepository experienceRepository;
+
+    @Autowired(required = false)
+    private AchievementService achievementService;
 
     public UserDTO getUserById(Long id, Long currentId) {
         User user = userRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("User not found"));
@@ -38,6 +44,8 @@ public class UserService {
         if (req.getPosition() != null) user.setPosition(req.getPosition());
         if (req.getBio() != null) user.setBio(req.getBio());
         if (req.getPhone() != null) user.setPhone(req.getPhone());
+        if (req.getBirthday() != null) user.setBirthday(req.getBirthday());
+        if (req.getWorkAnniversary() != null) user.setWorkAnniversary(req.getWorkAnniversary());
         userRepository.save(user);
         if (req.getSkills() != null) {
             userSkillRepository.deleteByUserId(id);
@@ -45,7 +53,19 @@ public class UserService {
                 userSkillRepository.save(UserSkill.builder().user(user).skillName(skill).build());
             }
         }
+        checkProfileComplete(user);
         return mapToDTO(user, id);
+    }
+
+    private void checkProfileComplete(User user) {
+        try {
+            if (achievementService == null) return;
+            boolean complete = user.getBio() != null && !user.getBio().isBlank()
+                    && user.getPosition() != null && !user.getPosition().isBlank()
+                    && user.getDepartment() != null && !user.getDepartment().isBlank()
+                    && user.getProfilePicUrl() != null && !user.getProfilePicUrl().isBlank();
+            if (complete) achievementService.award(user.getId(), "PROFILE_COMPLETE");
+        } catch (Exception ignored) {}
     }
 
     @Transactional
@@ -53,6 +73,7 @@ public class UserService {
         User user = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User not found"));
         user.setProfilePicUrl(url);
         userRepository.save(user);
+        checkProfileComplete(user);
     }
 
     @Transactional
@@ -95,6 +116,18 @@ public class UserService {
         return userRepository.findByRoleAndIsActiveTrue(role, PageRequest.of(page, size)).map(u -> mapToDTO(u, null));
     }
 
+    public List<UserDTO> getTodaysCelebrants(Long currentId) {
+        LocalDate today = LocalDate.now();
+        int m = today.getMonthValue();
+        int d = today.getDayOfMonth();
+        List<User> birthdays = userRepository.findByBirthdayMonthAndDay(m, d);
+        List<User> anniversaries = userRepository.findByWorkAnniversaryMonthAndDay(m, d);
+        Map<Long, User> merged = new LinkedHashMap<>();
+        for (User u : birthdays) merged.put(u.getId(), u);
+        for (User u : anniversaries) merged.putIfAbsent(u.getId(), u);
+        return merged.values().stream().map(u -> mapToDTO(u, currentId)).collect(Collectors.toList());
+    }
+
     private UserDTO mapToDTO(User user, Long currentId) {
         List<String> skills = userSkillRepository.findByUserId(user.getId()).stream().map(UserSkill::getSkillName).collect(Collectors.toList());
         int connCount = connectionRepository.countAcceptedConnections(user.getId());
@@ -110,6 +143,7 @@ public class UserService {
                 .position(user.getPosition()).bio(user.getBio())
                 .profilePicUrl(user.getProfilePicUrl()).bannerUrl(user.getBannerUrl())
                 .phone(user.getPhone()).createdAt(user.getCreatedAt())
+                .birthday(user.getBirthday()).workAnniversary(user.getWorkAnniversary())
                 .skills(skills).connectionCount(connCount).connectionStatus(connStatus)
                 .experiences(experiences).build();
     }

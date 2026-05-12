@@ -5,6 +5,7 @@ import { NavbarComponent } from './components/navbar/navbar.component';
 import { AuthService } from './services/auth.service';
 import { WebSocketService } from './services/websocket.service';
 import { MessageStateService } from './services/message-state.service';
+import { ThemeService } from './services/theme.service';
 import { Subscription } from 'rxjs';
 
 @Component({
@@ -22,10 +23,13 @@ export class AppComponent implements OnInit, OnDestroy {
   constructor(
     public auth: AuthService,
     private ws: WebSocketService,
-    private msgState: MessageStateService
+    private msgState: MessageStateService,
+    private theme: ThemeService
   ) { }
 
   ngOnInit(): void {
+    this.theme.init();
+
     if (this.auth.isLoggedIn()) {
       this.ws.connect();
       this.msgState.init();

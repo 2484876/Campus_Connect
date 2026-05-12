@@ -1,5 +1,6 @@
 package com.campusconnect.dto;
 import lombok.Data;
+import java.time.LocalDate;
 import java.util.List;
 @Data
 public class UpdateUserRequest {
@@ -9,4 +10,6 @@ public class UpdateUserRequest {
     private String bio;
     private String phone;
     private List<String> skills;
+    private LocalDate birthday;
+    private LocalDate workAnniversary;
 }

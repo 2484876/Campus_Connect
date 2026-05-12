@@ -1,0 +1,68 @@
+<div class="search-overlay" (click)="closeModal()">
+  <div class="search-panel" (click)="$event.stopPropagation()">
+    <div class="search-input-wrap">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="8" />
+        <path d="m21 21-4.35-4.35" />
+      </svg>
+      <input #searchInput type="text"
+             [(ngModel)]="query"
+             (input)="onInput()"
+             placeholder="Search people, groups, hashtags..."
+             autofocus>
+      <button class="close-btn" (click)="closeModal()">esc</button>
+    </div>
+
+    <div class="search-body">
+      <div *ngIf="loading" class="loading-row">
+        <div class="spinner"></div>
+        <span>Searching...</span>
+      </div>
+
+      <div *ngIf="!loading && !query" class="hint">
+        <p>Start typing to search</p>
+        <small>People, communities, hashtags</small>
+      </div>
+
+      <div *ngIf="!loading && query.length >= 2 && !hasResults()" class="hint">
+        <p>No results for "<strong>{{ query }}</strong>"</p>
+      </div>
+
+      <ng-container *ngIf="!loading && hasResults() && results">
+        <div *ngIf="results.users?.length" class="section">
+          <h6>People</h6>
+          <div *ngFor="let user of results.users" class="result-row" (click)="go(['/profile', user.id])">
+            <img [src]="user.profilePicUrl || 'https://ui-avatars.com/api/?name=' + user.name + '&background=2d5f3f&color=fff'" class="avatar-sm">
+            <div class="result-info">
+              <div class="name">{{ user.name }}</div>
+              <div class="meta">{{ user.position }} · {{ user.department }}</div>
+            </div>
+            <span class="badge-role" [ngClass]="'badge-' + user.role.toLowerCase()">{{ user.role.replace('_',' ') }}</span>
+          </div>
+        </div>
+
+        <div *ngIf="results.communities?.length" class="section">
+          <h6>Communities</h6>
+          <div *ngFor="let c of results.communities" class="result-row" (click)="go(['/communities', c.id])">
+            <img [src]="c.iconUrl || 'https://ui-avatars.com/api/?name=' + c.name + '&background=2d5f3f&color=fff'" class="avatar-sm community-icon">
+            <div class="result-info">
+              <div class="name">{{ c.name }}</div>
+              <div class="meta">{{ c.memberCount }} members</div>
+            </div>
+          </div>
+        </div>
+
+        <div *ngIf="results.hashtags?.length" class="section">
+          <h6>Hashtags</h6>
+          <div *ngFor="let h of results.hashtags" class="result-row" (click)="go(['/hashtag', h.tag])">
+            <div class="hashtag-icon">#</div>
+            <div class="result-info">
+              <div class="name">#{{ h.tag }}</div>
+              <div class="meta">{{ h.usageCount }} posts</div>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+    </div>
+  </div>
+</div>

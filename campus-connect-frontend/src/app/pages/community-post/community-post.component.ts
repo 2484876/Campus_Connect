@@ -20,13 +20,16 @@ export class CommunityPostComponent implements OnInit {
   newComment = '';
   commenting = false;
   communityId = 0;
+  currentUserId: number;
 
   constructor(
     private api: ApiService,
     public auth: AuthService,
     private route: ActivatedRoute,
     private cdr: ChangeDetectorRef
-  ) { }
+  ) {
+    this.currentUserId = this.auth.getCurrentUser()?.userId || 0;
+  }
 
   ngOnInit(): void {
     this.route.params.subscribe(params => {
@@ -101,8 +104,82 @@ export class CommunityPostComponent implements OnInit {
     });
   }
 
+  // ===== Q&A =====
+
+  isQuestion(): boolean { return this.post?.postType === 'QUESTION'; }
+  canAcceptAnswers(): boolean {
+    // Only the question's author can mark an answer as accepted
+    return this.isQuestion() && this.post?.authorId === this.currentUserId;
+  }
+
+  acceptAnswer(comment: CommunityCommentDTO): void {
+    if (!this.post) return;
+    this.api.acceptAnswer(this.post.id, comment.id).subscribe(updatedPost => {
+      // mark this comment accepted; unmark all others (including replies)
+      const clearAll = (list: CommunityCommentDTO[]) => {
+        list.forEach(c => {
+          c.isAcceptedAnswer = (c.id === comment.id);
+          if (c.replies) clearAll(c.replies);
+        });
+      };
+      clearAll(this.comments);
+      Object.assign(this.post!, updatedPost);
+      this.cdr.detectChanges();
+    });
+  }
+
+  unacceptAnswer(): void {
+    if (!this.post) return;
+    if (!confirm('Remove the accepted answer mark?')) return;
+    this.api.unacceptAnswer(this.post.id).subscribe(updatedPost => {
+      const clearAll = (list: CommunityCommentDTO[]) => {
+        list.forEach(c => {
+          c.isAcceptedAnswer = false;
+          if (c.replies) clearAll(c.replies);
+        });
+      };
+      clearAll(this.comments);
+      Object.assign(this.post!, updatedPost);
+      this.cdr.detectChanges();
+    });
+  }
+
+  getAcceptedAnswer(): CommunityCommentDTO | null {
+    if (!this.post?.acceptedAnswerId) return null;
+    const findIn = (list: CommunityCommentDTO[]): CommunityCommentDTO | null => {
+      for (const c of list) {
+        if (c.id === this.post!.acceptedAnswerId) return c;
+        if (c.replies) {
+          const f = findIn(c.replies);
+          if (f) return f;
+        }
+      }
+      return null;
+    };
+    return findIn(this.comments);
+  }
+
+  // ===== anonymous =====
+
+  isAnonymousPost(): boolean { return !!this.post?.anonymous && !this.post?.unmaskedByMe; }
+
+  unmaskMe(): void {
+    if (!this.post) return;
+    if (!confirm('Reveal yourself as the author of this anonymous post?')) return;
+    this.api.unmaskAnonymous(this.post.id).subscribe(updated => {
+      Object.assign(this.post!, updated);
+      this.cdr.detectChanges();
+    });
+  }
+
+  // ===== helpers =====
+
   getAvatar(name: string): string {
-    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0a66c2&color=fff`;
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=2d5f3f&color=fff`;
+  }
+
+  getAnonAvatar(): string {
+    return `https://ui-avatars.com/api/?name=A&background=64748b&color=fff`;
   }
 
   timeAgo(dateStr: string): string {

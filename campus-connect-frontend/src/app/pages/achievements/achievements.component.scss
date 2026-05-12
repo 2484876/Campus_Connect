@@ -1,0 +1,150 @@
+.ach-header {
+  h2 {
+    font-size: 22px;
+    margin-bottom: 4px;
+  }
+
+  .subtitle {
+    color: var(--text-secondary);
+    font-size: 13px;
+    margin: 0 0 16px;
+  }
+}
+
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.stat {
+  text-align: center;
+  padding: 12px;
+  background: var(--bg-hover);
+  border-radius: var(--radius-sm);
+
+  .stat-num {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--primary);
+    line-height: 1.1;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+    font-weight: 600;
+  }
+}
+
+.ach-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.ach-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 14px;
+  text-align: center;
+  transition: all 0.2s;
+  position: relative;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+
+  &.locked {
+    opacity: 0.5;
+    filter: grayscale(80%);
+
+    .ach-icon {
+      opacity: 0.5;
+    }
+  }
+
+  &.tier-bronze .tier-badge {
+    background: #fef3e2;
+    color: #92400e;
+  }
+
+  &.tier-silver .tier-badge {
+    background: #f1f5f9;
+    color: #475569;
+  }
+
+  &.tier-gold .tier-badge {
+    background: #fef9c3;
+    color: #854d0e;
+  }
+
+  .ach-icon {
+    font-size: 40px;
+    margin-bottom: 8px;
+    line-height: 1;
+  }
+
+  .ach-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+
+  .ach-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    min-height: 32px;
+  }
+
+  .ach-meta {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 10px;
+    font-size: 11px;
+
+    .tier-badge {
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .points {
+      color: var(--primary);
+      font-weight: 700;
+    }
+  }
+
+  .earned-on {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 8px;
+  }
+}
+
+[data-theme="dark"] .ach-card.tier-bronze .tier-badge {
+  background: #3a2418;
+  color: #fbbf24;
+}
+
+[data-theme="dark"] .ach-card.tier-silver .tier-badge {
+  background: #2e3138;
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .ach-card.tier-gold .tier-badge {
+  background: #3a3318;
+  color: #facc15;
+}

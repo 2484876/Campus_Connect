@@ -4,12 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterModule, Router } from '@angular/router';
 import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
-import { CommunityDTO, CommunityPostDTO, ConnectionDTO, UserDTO } from '../../models';
+import { CommunityDTO, CommunityPostDTO, ConnectionDTO, UserDTO, CommunityResourceDTO } from '../../models';
+import { ResourceAddDialogComponent } from '../../components/resource-add-dialog/resource-add-dialog.component';
 
 @Component({
   selector: 'app-community-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, ResourceAddDialogComponent],
   templateUrl: './community-detail.component.html',
   styleUrls: ['./community-detail.component.scss']
 })
@@ -18,8 +19,11 @@ export class CommunityDetailComponent implements OnInit {
   posts: CommunityPostDTO[] = [];
   members: UserDTO[] = [];
   connections: ConnectionDTO[] = [];
+  resources: CommunityResourceDTO[] = [];
   loading = true;
   newPostContent = '';
+  postType: 'DISCUSSION' | 'QUESTION' = 'DISCUSSION';
+  anonymous = false;
   posting = false;
   uploading = false;
   selectedImage: File | null = null;
@@ -28,12 +32,14 @@ export class CommunityDetailComponent implements OnInit {
   videoPreview: string | null = null;
   page = 0;
   isLast = false;
-  activeTab = 'posts';
+  activeTab: 'posts' | 'questions' | 'resources' | 'about' = 'posts';
   showInviteModal = false;
   showSettingsMenu = false;
   showSettings = false;
   showMembers = false;
+  showResourceDialog = false;
   inviting = false;
+  resourceQuery = '';
   editForm = { name: '', description: '', isPrivate: false };
   currentUserId: number;
 
@@ -85,6 +91,29 @@ export class CommunityDetailComponent implements OnInit {
     });
   }
 
+  loadResources(): void {
+    if (!this.community) return;
+    this.api.getCommunityResources(this.community.id, this.resourceQuery || undefined).subscribe(res => {
+      this.resources = res.content;
+      this.cdr.detectChanges();
+    });
+  }
+
+  setTab(t: 'posts' | 'questions' | 'resources' | 'about'): void {
+    this.activeTab = t;
+    if (t === 'resources') this.loadResources();
+  }
+
+  searchResources(): void {
+    this.loadResources();
+  }
+
+  filteredPosts(): CommunityPostDTO[] {
+    if (this.activeTab === 'questions') return this.posts.filter(p => p.postType === 'QUESTION');
+    if (this.activeTab === 'posts') return this.posts.filter(p => p.postType !== 'QUESTION');
+    return this.posts;
+  }
+
   onImageSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (!input.files?.[0]) return;
@@ -132,13 +161,19 @@ export class CommunityDetailComponent implements OnInit {
   }
 
   private submitPost(imageUrl: string | null, videoUrl: string | null): void {
-    const payload: any = { content: this.newPostContent };
+    const payload: any = {
+      content: this.newPostContent,
+      postType: this.postType,
+      anonymous: this.anonymous
+    };
     if (imageUrl) payload.imageUrl = imageUrl;
     if (videoUrl) payload.videoUrl = videoUrl;
     this.api.createCommunityPost(this.community!.id, payload).subscribe({
       next: (post) => {
         this.posts.unshift(post);
         this.newPostContent = ''; this.removeMedia();
+        this.postType = 'DISCUSSION';
+        this.anonymous = false;
         this.posting = false; this.uploading = false;
         this.cdr.detectChanges();
       },
@@ -159,6 +194,37 @@ export class CommunityDetailComponent implements OnInit {
     this.api.deleteCommunityPost(post.id).subscribe(() => {
       this.posts.splice(index, 1); this.cdr.detectChanges();
     });
+  }
+
+  unmaskPost(post: CommunityPostDTO): void {
+    if (!confirm('Reveal yourself as the author of this anonymous post?')) return;
+    this.api.unmaskAnonymous(post.id).subscribe(updated => {
+      Object.assign(post, updated);
+      this.cdr.detectChanges();
+    });
+  }
+
+  deleteResource(resource: CommunityResourceDTO): void {
+    if (!this.community || !confirm('Delete this resource?')) return;
+    this.api.deleteCommunityResource(this.community.id, resource.id).subscribe(() => {
+      this.resources = this.resources.filter(r => r.id !== resource.id);
+      this.cdr.detectChanges();
+    });
+  }
+
+  openResource(r: CommunityResourceDTO): void {
+    if (!this.community) return;
+    this.api.trackResourceClick(this.community.id, r.id).subscribe(() => {
+      r.clickCount = (r.clickCount || 0) + 1;
+      this.cdr.detectChanges();
+    });
+    window.open(r.url, '_blank');
+  }
+
+  onResourceAdded(r: CommunityResourceDTO): void {
+    this.resources.unshift(r);
+    this.showResourceDialog = false;
+    this.cdr.detectChanges();
   }
 
   join(): void {
@@ -239,11 +305,22 @@ export class CommunityDetailComponent implements OnInit {
   }
 
   getIcon(name: string): string {
-    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=7b2cbf&color=fff&bold=true&size=120`;
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=2d5f3f&color=fff&bold=true&size=120`;
   }
 
   getAvatar(name: string): string {
-    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0a66c2&color=fff`;
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=2d5f3f&color=fff`;
+  }
+
+  getAnonAvatar(): string {
+    return `https://ui-avatars.com/api/?name=A&background=64748b&color=fff`;
+  }
+
+  formatFileSize(bytes: number | null): string {
+    if (!bytes) return '';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   }
 
   timeAgo(dateStr: string): string {

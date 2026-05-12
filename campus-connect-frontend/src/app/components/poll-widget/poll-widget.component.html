@@ -1,0 +1,30 @@
+<div class="poll-widget" *ngIf="poll">
+  <div class="poll-question">{{ poll.question }}</div>
+
+  <div class="poll-options">
+    <div *ngFor="let option of poll.options"
+         class="poll-option"
+         [class.voted]="isVoted(option.id)"
+         [class.show-results]="poll.hasVoted || poll.expired"
+         (click)="vote(option.id)">
+
+      <div *ngIf="poll.hasVoted || poll.expired" class="result-bar" [style.width.%]="option.percentage"></div>
+
+      <div class="poll-option-content">
+        <span class="option-text">
+          <span *ngIf="isVoted(option.id)" class="check">✓</span>
+          {{ option.optionText }}
+        </span>
+        <span *ngIf="poll.hasVoted || poll.expired" class="option-pct">
+          {{ option.percentage }}% · {{ option.voteCount }}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="poll-footer">
+    <span>{{ poll.totalVotes }} {{ poll.totalVotes === 1 ? 'vote' : 'votes' }}</span>
+    <span *ngIf="poll.expiresAt">· {{ expiryLabel() }}</span>
+    <span *ngIf="poll.multiChoice">· Multi-choice</span>
+  </div>
+</div>

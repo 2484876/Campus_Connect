@@ -559,3 +559,340 @@
     height: 28px;
   }
 }
+
+.kudos-btn {
+  background: var(--accent-soft) !important;
+  color: var(--accent) !important;
+  margin-left: 6px;
+
+  &:hover {
+    background: var(--accent) !important;
+    color: #fff !important;
+  }
+}
+
+.ach-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.ach-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--primary-light);
+  color: var(--primary);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+
+  .ach-emoji {
+    font-size: 14px;
+  }
+}
+
+.see-all {
+  font-size: 12px;
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* ============ KUDOS — Instagram-style horizontal strip ============ */
+
+.kudos-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+
+  .kudos-count {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 2px 10px;
+    border-radius: 999px;
+  }
+}
+
+.kudos-strip-wrapper {
+  position: relative;
+  margin: 0 -8px;
+}
+
+.kudos-strip {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  padding: 8px 8px 4px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.kudos-story {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 72px;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+
+    .kudos-avatar-ring::before {
+      opacity: 1;
+    }
+  }
+}
+
+.kudos-avatar-ring {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  padding: 2.5px;
+  background: linear-gradient(135deg, #f59e0b 0%, #ef4444 50%, #8b5cf6 100%);
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f59e0b 0%, #ef4444 50%, #8b5cf6 100%);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: -1;
+    filter: blur(6px);
+  }
+
+  &--lg {
+    width: 96px;
+    height: 96px;
+    padding: 3px;
+  }
+}
+
+.kudos-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2.5px solid #fff;
+  background: #fff;
+  display: block;
+}
+
+.kudos-category-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 24px;
+  height: 24px;
+  background: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  border: 2px solid #fff;
+
+  &--lg {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+    bottom: 0;
+    right: 0;
+  }
+}
+
+.kudos-giver-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: #333;
+  text-align: center;
+  max-width: 72px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+.scroll-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  color: #555;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: #f5f5f5;
+    color: #000;
+    transform: translateY(-50%) scale(1.05);
+  }
+
+  &--left {
+    left: -4px;
+  }
+
+  &--right {
+    right: -4px;
+  }
+}
+
+/* Kudos detail modal */
+.kudos-detail-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+  animation: kudosFadeIn 0.18s ease;
+}
+
+@keyframes kudosFadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.kudos-detail-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 32px 24px 24px;
+  max-width: 380px;
+  width: 100%;
+  position: relative;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+  text-align: center;
+  animation: kudosSlideUp 0.22s ease;
+}
+
+@keyframes kudosSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.kudos-detail-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #f5f5f5;
+  border: none;
+  color: #555;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+
+  &:hover {
+    background: #e8e8e8;
+    color: #000;
+  }
+}
+
+.kudos-detail-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.kudos-detail-name {
+  font-size: 17px;
+  font-weight: 700;
+  color: #191919;
+  text-decoration: none;
+  margin-top: 4px;
+
+  &:hover {
+    color: var(--primary);
+  }
+}
+
+.kudos-detail-category {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 4px 12px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.kudos-detail-message {
+  font-size: 15px;
+  color: #333;
+  line-height: 1.5;
+  margin: 12px 0 8px;
+  font-style: italic;
+}
+
+.kudos-detail-time {
+  font-size: 12px;
+  color: #999;
+}
+
+.hint {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+@media (max-width: 480px) {
+  .kudos-story {
+    width: 64px;
+  }
+
+  .kudos-avatar-ring {
+    width: 56px;
+    height: 56px;
+  }
+
+  .scroll-arrow {
+    display: none;
+  }
+}
