@@ -4,7 +4,11 @@ import { Subject } from 'rxjs';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { MessageDTO, ReadReceiptDTO, TypingDTO, MessageDeleteDTO, ReactionNotificationDTO } from '../models';
-
+/**
+ * WebSocketService handles real-time communication via STOMP protocol.
+ * It manages connection lifecycle, subscriptions to user-specific queues,
+ * and broadcasting incoming data through RxJS Subjects..
+ */
 @Injectable({ providedIn: 'root' })
 export class WebSocketService {
 

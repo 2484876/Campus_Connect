@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 
+//manages the login state (loading, error handling).
 @Component({
   selector: 'app-login',
   standalone: true,
@@ -23,6 +24,7 @@ export class LoginComponent {
     }
   }
 
+  
   onLogin(): void {
     if (!this.email || !this.password) {
       this.error = 'Please fill in all fields';

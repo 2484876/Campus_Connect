@@ -11,6 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+//Event Controller
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
