@@ -13,6 +13,10 @@ import { StoriesComponent } from '../../components/stories/stories.component';
 import { PollCreatorComponent, PollDraft } from '../../components/poll-creator/poll-creator.component';
 import { PollWidgetComponent } from '../../components/poll-widget/poll-widget.component';
 import { HashtagLinksPipe } from '../../pipes/hashtag-links.pipe';
+import { ProfileCompletionComponent } from '../../components/profile-completion/profile-completion.component';
+import { PeopleYouMayKnowComponent } from '../../components/people-you-may-know/people-you-may-know.component';
+
+export type FeedMode = 'ALL' | 'FOR_YOU';
 
 @Component({
   selector: 'app-feed',
@@ -22,7 +26,8 @@ import { HashtagLinksPipe } from '../../pipes/hashtag-links.pipe';
     TrendingSidebarComponent, ReportDialogComponent,
     StreakWidgetComponent, CelebrantsWidgetComponent,
     StoriesComponent, PollCreatorComponent, PollWidgetComponent,
-    HashtagLinksPipe
+    HashtagLinksPipe,
+    ProfileCompletionComponent, PeopleYouMayKnowComponent
   ],
   templateUrl: './feed.html',
   styleUrl: './feed.scss'
@@ -36,6 +41,8 @@ export class FeedComponent implements OnInit {
   posting = false;
   currentUserId: number;
   myProfile: UserDTO | null = null;
+
+  feedMode: FeedMode = 'ALL';
 
   selectedImageFile: File | null = null;
   selectedVideoFile: File | null = null;
@@ -55,10 +62,24 @@ export class FeedComponent implements OnInit {
     private cdr: ChangeDetectorRef
   ) {
     this.currentUserId = this.auth.getCurrentUser()?.userId || 0;
+    const saved = (typeof localStorage !== 'undefined') ? localStorage.getItem('feedMode') as FeedMode : null;
+    if (saved === 'ALL' || saved === 'FOR_YOU') {
+      this.feedMode = saved;
+    }
   }
 
   ngOnInit(): void {
     this.loadProfile();
+    this.loadFeed();
+  }
+
+  setMode(mode: FeedMode): void {
+    if (this.feedMode === mode) return;
+    this.feedMode = mode;
+    try { localStorage.setItem('feedMode', mode); } catch (e) { }
+    this.page = 0;
+    this.isLast = false;
+    this.posts = [];
     this.loadFeed();
   }
 
@@ -72,7 +93,7 @@ export class FeedComponent implements OnInit {
   loadFeed(): void {
     if (this.loading || this.isLast) return;
     this.loading = true;
-    this.api.getFeed(this.page).subscribe({
+    this.api.getFeed(this.page, 10, this.feedMode).subscribe({
       next: (res) => {
         this.posts = this.page === 0 ? res.content : [...this.posts, ...res.content];
         this.isLast = res.last;
@@ -263,7 +284,7 @@ export class FeedComponent implements OnInit {
   }
 
   getUserAvatar(name: string): string {
-    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=2d5f3f&color=fff`;
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1a1a1a&color=fff`;
   }
 
   getMyAvatar(): string {

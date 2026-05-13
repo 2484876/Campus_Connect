@@ -1,12 +1,14 @@
 package com.campusconnect.service;
 
 import com.campusconnect.dto.HashtagDTO;
+import com.campusconnect.dto.PostDTO;
 import com.campusconnect.entity.Hashtag;
+import com.campusconnect.entity.Post;
+import com.campusconnect.entity.PostHashtag;
 import com.campusconnect.repository.HashtagRepository;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
+import com.campusconnect.repository.PostHashtagRepository;
+import com.campusconnect.repository.PostRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,65 +22,98 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class HashtagService {
 
+    private static final Pattern HASHTAG_PATTERN = Pattern.compile("#([A-Za-z0-9_]{2,50})");
+
     private final HashtagRepository hashtagRepository;
+    private final PostHashtagRepository postHashtagRepository;
+    private final PostRepository postRepository;
+    private final FeedService feedService;
 
-    @PersistenceContext
-    private EntityManager em;
-
-    private static final Pattern TAG_PATTERN = Pattern.compile("#([A-Za-z0-9_]{2,50})");
-
-    public Set<String> extractTags(String text) {
-        Set<String> tags = new HashSet<>();
-        if (text == null) return tags;
-        Matcher m = TAG_PATTERN.matcher(text);
-        while (m.find()) tags.add(m.group(1).toLowerCase());
+    public Set<String> extractTags(String content) {
+        Set<String> tags = new LinkedHashSet<>();
+        if (content == null || content.isBlank()) return tags;
+        Matcher m = HASHTAG_PATTERN.matcher(content);
+        while (m.find()) {
+            tags.add(m.group(1).toLowerCase());
+        }
         return tags;
     }
 
     @Transactional
-    public void processPostTags(Long postId, String content) {
-        em.createNativeQuery("DELETE FROM post_hashtags WHERE post_id = ?1")
-                .setParameter(1, postId).executeUpdate();
-
-        Set<String> tags = extractTags(content);
+    public void linkPostToHashtags(Post post) {
+        if (post == null) return;
+        Set<String> tags = extractTags(post.getContent());
         if (tags.isEmpty()) return;
 
+        LocalDateTime now = LocalDateTime.now();
         for (String tag : tags) {
             Hashtag h = hashtagRepository.findByTag(tag).orElseGet(() -> {
-                Hashtag nh = Hashtag.builder().tag(tag).usageCount(0L).build();
-                return hashtagRepository.save(nh);
+                Hashtag fresh = Hashtag.builder()
+                        .tag(tag)
+                        .usageCount(0)
+                        .lastUsed(now)
+                        .build();
+                return hashtagRepository.save(fresh);
             });
-            h.setUsageCount(h.getUsageCount() + 1);
-            hashtagRepository.save(h);
 
-            em.createNativeQuery("INSERT INTO post_hashtags (post_id, hashtag_id) VALUES (?1, ?2)")
-                    .setParameter(1, postId)
-                    .setParameter(2, h.getId())
-                    .executeUpdate();
+            if (!postHashtagRepository.existsByPostIdAndHashtagId(post.getId(), h.getId())) {
+                postHashtagRepository.save(PostHashtag.builder()
+                        .post(post)
+                        .hashtag(h)
+                        .build());
+                h.setUsageCount(h.getUsageCount() + 1);
+                h.setLastUsed(now);
+                hashtagRepository.save(h);
+            }
         }
     }
 
-    public List<HashtagDTO> getTrending(int limit) {
-        LocalDateTime since = LocalDateTime.now().minusDays(14);
-        return hashtagRepository.findTrending(since, PageRequest.of(0, limit))
-                .stream().map(this::toDTO).collect(Collectors.toList());
+    @Transactional
+    public void relinkPostHashtags(Post post) {
+        postHashtagRepository.deleteByPostId(post.getId());
+        linkPostToHashtags(post);
+    }
+
+    public List<HashtagDTO> trending(int limit) {
+        List<Hashtag> all = hashtagRepository.findTopTrending();
+        return all.stream()
+                .limit(limit)
+                .map(this::toDTO)
+                .collect(Collectors.toList());
     }
 
     public List<HashtagDTO> search(String q, int limit) {
-        return hashtagRepository.searchByTag(q, PageRequest.of(0, limit))
-                .map(this::toDTO).getContent();
+        if (q == null || q.isBlank()) return List.of();
+        String clean = q.startsWith("#") ? q.substring(1) : q;
+        return hashtagRepository.searchByPrefix(clean.toLowerCase()).stream()
+                .limit(limit)
+                .map(this::toDTO)
+                .collect(Collectors.toList());
     }
 
-    @SuppressWarnings("unchecked")
-    public List<Long> findPostIdsByTag(String tag) {
-        List<Number> result = em.createNativeQuery(
-                        "SELECT ph.post_id FROM post_hashtags ph JOIN hashtags h ON h.id = ph.hashtag_id WHERE h.tag = ?1 ORDER BY ph.post_id DESC")
-                .setParameter(1, tag.toLowerCase())
-                .getResultList();
-        return result.stream().map(Number::longValue).collect(Collectors.toList());
+    public List<PostDTO> postsByTag(String tag, Long currentUserId) {
+        if (tag == null) return List.of();
+        String clean = tag.startsWith("#") ? tag.substring(1) : tag;
+        Optional<Hashtag> hOpt = hashtagRepository.findByTag(clean.toLowerCase());
+        if (hOpt.isEmpty()) return List.of();
+
+        List<Long> postIds = postHashtagRepository.findPostIdsByHashtagId(hOpt.get().getId());
+        if (postIds.isEmpty()) return List.of();
+
+        List<Post> posts = postRepository.findAllById(postIds);
+        posts.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
+
+        return posts.stream()
+                .filter(Post::isActive)
+                .map(p -> feedService.mapToDTO(p, currentUserId))
+                .collect(Collectors.toList());
     }
 
     private HashtagDTO toDTO(Hashtag h) {
-        return HashtagDTO.builder().id(h.getId()).tag(h.getTag()).usageCount(h.getUsageCount()).build();
+        return HashtagDTO.builder()
+                .id(h.getId())
+                .tag(h.getTag())
+                .usageCount(h.getUsageCount())
+                .build();
     }
 }

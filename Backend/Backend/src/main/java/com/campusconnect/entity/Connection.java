@@ -25,6 +25,10 @@ public class Connection {
     @Enumerated(EnumType.STRING)
     private ConnectionStatus status = ConnectionStatus.PENDING;
 
+    /** Optional note attached to the connection request (max 300 chars). */
+    @Column(length = 300)
+    private String message;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

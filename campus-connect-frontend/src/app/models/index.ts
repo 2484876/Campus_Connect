@@ -26,6 +26,26 @@ export interface UserDTO {
   workAnniversary: string | null;
 }
 
+export interface ExperienceDTO {
+  id: number;
+  title: string;
+  employmentType: string;
+  company: string;
+  location: string;
+  startDate: string;
+  endDate: string;
+  isCurrent: boolean;
+  description: string;
+}
+
+export interface PageResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  last: boolean;
+  number: number;
+}
+
 export interface PostDTO {
   id: number;
   content: string;
@@ -66,7 +86,29 @@ export interface ConnectionDTO {
   userRole: string;
   userDepartment: string;
   status: string;
+  message: string | null;
+  sentByMe: boolean;
   createdAt: string;
+}
+
+export interface ConnectionSuggestionDTO {
+  userId: number;
+  name: string;
+  profilePicUrl: string | null;
+  position: string | null;
+  department: string | null;
+  role: string;
+  mutualCount: number;
+  reason: string;
+  score: number;
+}
+
+export interface MutualConnectionDTO {
+  userId: number;
+  name: string;
+  profilePicUrl: string | null;
+  position: string | null;
+  department: string | null;
 }
 
 export interface NotificationDTO {
@@ -79,41 +121,6 @@ export interface NotificationDTO {
   isRead: boolean;
   createdAt: string;
   message: string;
-}
-
-export interface PageResponse<T> {
-  content: T[];
-  totalElements: number;
-  totalPages: number;
-  last: boolean;
-  number: number;
-}
-
-export interface CommunityDTO {
-  id: number;
-  name: string;
-  description: string;
-  bannerUrl: string;
-  iconUrl: string;
-  createdById: number;
-  createdByName: string;
-  isPrivate: boolean;
-  memberCount: number;
-  isMember: boolean;
-  memberRole: string;
-  createdAt: string;
-}
-
-export interface ExperienceDTO {
-  id: number;
-  title: string;
-  employmentType: string;
-  company: string;
-  location: string;
-  startDate: string;
-  endDate: string;
-  isCurrent: boolean;
-  description: string;
 }
 
 export interface ReactionDTO {
@@ -215,7 +222,97 @@ export interface SearchResultDTO {
   hashtags: HashtagDTO[];
 }
 
-// ===== POLLS =====
+export interface CommunityDTO {
+  id: number;
+  name: string;
+  description: string;
+  bannerUrl: string;
+  iconUrl: string;
+  createdById: number;
+  createdByName: string;
+  isPrivate: boolean;
+  memberCount: number;
+  isMember: boolean;
+  memberRole: string;
+  createdAt: string;
+}
+
+export type CommunityPostType = 'DISCUSSION' | 'QUESTION';
+
+export interface CommunityPostDTO {
+  id: number;
+  communityId: number;
+  communityName: string;
+  communityIconUrl: string;
+  authorId: number;
+  authorName: string;
+  authorProfilePic: string;
+  authorRole: string;
+  content: string;
+  imageUrl: string;
+  videoUrl: string;
+  upvotes: number;
+  downvotes: number;
+  score: number;
+  userVote: number;
+  commentCount: number;
+  createdAt: string;
+  postType: CommunityPostType;
+  anonymous: boolean;
+  unmaskedByMe: boolean;
+  acceptedAnswerId: number | null;
+  resolved: boolean;
+}
+
+export interface CommunityCommentDTO {
+  id: number;
+  postId: number;
+  authorId: number;
+  authorName: string;
+  authorProfilePic: string;
+  parentCommentId: number;
+  content: string;
+  upvotes: number;
+  downvotes: number;
+  score: number;
+  userVote: number;
+  replyCount: number;
+  replies: CommunityCommentDTO[];
+  createdAt: string;
+  isAcceptedAnswer: boolean;
+  showReplyInput?: boolean;
+  replyContent?: string;
+  showReplies?: boolean;
+}
+
+export type ResourceType = 'LINK' | 'FILE';
+
+export interface CommunityResourceDTO {
+  id: number;
+  communityId: number;
+  uploadedById: number;
+  uploadedByName: string;
+  uploadedByProfilePic: string | null;
+  title: string;
+  description: string | null;
+  resourceType: ResourceType;
+  url: string;
+  fileSizeBytes: number | null;
+  mimeType: string | null;
+  tags: string | null;
+  clickCount: number;
+  createdAt: string;
+}
+
+export interface CreateResourceRequest {
+  title: string;
+  description?: string;
+  resourceType: ResourceType;
+  url: string;
+  fileSizeBytes?: number;
+  mimeType?: string;
+  tags?: string;
+}
 
 export interface PollOptionDTO {
   id: number;
@@ -244,8 +341,6 @@ export interface CreatePollRequest {
   expiresAt?: string | null;
 }
 
-// ===== KUDOS =====
-
 export interface KudosDTO {
   id: number;
   giverId: number;
@@ -268,8 +363,6 @@ export interface CreateKudosRequest {
   message?: string;
   isPublic?: boolean;
 }
-
-// ===== ACHIEVEMENTS / STREAKS =====
 
 export interface AchievementDTO {
   id: number;
@@ -296,8 +389,6 @@ export interface AchievementStats {
   totalAvailable: number;
   totalPoints: number;
 }
-
-// ===== STORIES =====
 
 export interface StoryDTO {
   id: number;
@@ -333,8 +424,6 @@ export interface StoryViewer {
   userProfilePic: string;
   viewedAt: string;
 }
-
-// ===== EVENTS (Batch 5 - upgraded) =====
 
 export type RsvpStatus = 'GOING' | 'INTERESTED' | 'NOT_GOING';
 export type EventType = 'PHYSICAL' | 'VIRTUAL' | 'HYBRID';
@@ -405,83 +494,55 @@ export interface EventChatMessageDTO {
   createdAt: string;
 }
 
-// ===== COMMUNITIES Q&A + ANONYMOUS + RESOURCES (Batch 5) =====
+export type EndorsementCategory =
+  'TECHNICAL' | 'LEADERSHIP' | 'TEAMWORK' |
+  'COMMUNICATION' | 'PROBLEM_SOLVING' | 'MENTORSHIP';
 
-export type CommunityPostType = 'DISCUSSION' | 'QUESTION';
-export type ResourceType = 'LINK' | 'FILE';
-
-export interface CommunityPostDTO {
+export interface SkillEndorsementDTO {
   id: number;
-  communityId: number;
-  communityName: string;
-  communityIconUrl: string;
-  authorId: number;
-  authorName: string;
-  authorProfilePic: string;
-  authorRole: string;
-  content: string;
-  imageUrl: string;
-  videoUrl: string;
-  upvotes: number;
-  downvotes: number;
-  score: number;
-  userVote: number;
-  commentCount: number;
-  createdAt: string;
-  // Q&A + anonymous additions
-  postType: CommunityPostType;
-  anonymous: boolean;
-  unmaskedByMe: boolean;
-  acceptedAnswerId: number | null;
-  resolved: boolean;
-}
-
-export interface CommunityCommentDTO {
-  id: number;
-  postId: number;
-  authorId: number;
-  authorName: string;
-  authorProfilePic: string;
-  parentCommentId: number;
-  content: string;
-  upvotes: number;
-  downvotes: number;
-  score: number;
-  userVote: number;
-  replyCount: number;
-  replies: CommunityCommentDTO[];
-  createdAt: string;
-  // Q&A addition
-  isAcceptedAnswer: boolean;
-  // UI-only fields
-  showReplyInput?: boolean;
-  replyContent?: string;
-  showReplies?: boolean;
-}
-
-export interface CommunityResourceDTO {
-  id: number;
-  communityId: number;
-  uploadedById: number;
-  uploadedByName: string;
-  uploadedByProfilePic: string | null;
-  title: string;
-  description: string | null;
-  resourceType: ResourceType;
-  url: string;
-  fileSizeBytes: number | null;
-  mimeType: string | null;
-  tags: string | null;
-  clickCount: number;
+  endorserId: number;
+  endorserName: string;
+  endorserProfilePic: string | null;
+  endorserPosition: string | null;
+  endorseeId: number;
+  endorseeName: string;
+  skill: string | null;
+  category: EndorsementCategory | null;
+  message: string | null;
   createdAt: string;
 }
 
-export interface CreateResourceRequest {
-  title: string;
-  description?: string;
-  resourceType: ResourceType;
-  url: string;
-  fileSizeBytes?: number;
-  mimeType?: string;
-  tags?: string;
+export interface CreateEndorsementRequest {
+  endorseeId: number;
+  skill?: string;
+  category?: EndorsementCategory;
+  message?: string;
+}
+
+export interface SkillCount {
+  label: string;
+  count: number;
+}
+
+export interface EndorsementSummaryDTO {
+  totalReceived: number;
+  totalGiven: number;
+  topSkills: SkillCount[];
+  categoryBreakdown: SkillCount[];
+}
+
+export interface MissingField {
+  key: string;
+  label: string;
+  weight: number;
+}
+
+export interface ProfileCompletionDTO {
+  percent: number;
+  missing: MissingField[];
+}
+
+export interface SkillSuggestion {
+  skill: string;
+  count: number;
 }

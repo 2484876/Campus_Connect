@@ -1,14 +1,16 @@
 package com.campusconnect.controller;
 
 import com.campusconnect.config.CustomUserDetails;
-import com.campusconnect.dto.ConnectionDTO;
+import com.campusconnect.dto.*;
 import com.campusconnect.service.ConnectionService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import java.util.Map;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/connections")
@@ -19,9 +21,9 @@ public class ConnectionController {
 
     @PostMapping("/request")
     public ResponseEntity<ConnectionDTO> sendRequest(@AuthenticationPrincipal CustomUserDetails user,
-                                                     @RequestBody Map<String, Long> body) {
+                                                     @Valid @RequestBody ConnectionRequestBody body) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(connectionService.sendRequest(user.getId(), body.get("receiverId")));
+                .body(connectionService.sendRequest(user.getId(), body.getReceiverId(), body.getMessage()));
     }
 
     @PutMapping("/{id}/accept")
@@ -44,6 +46,13 @@ public class ConnectionController {
         return ResponseEntity.noContent().build();
     }
 
+    @DeleteMapping("/{id}/withdraw")
+    public ResponseEntity<Void> withdraw(@AuthenticationPrincipal CustomUserDetails user,
+                                         @PathVariable Long id) {
+        connectionService.withdrawRequest(user.getId(), id);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping
     public ResponseEntity<Page<ConnectionDTO>> getConnections(@AuthenticationPrincipal CustomUserDetails user,
                                                               @RequestParam(defaultValue = "0") int page,
@@ -56,5 +65,31 @@ public class ConnectionController {
                                                           @RequestParam(defaultValue = "0") int page,
                                                           @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(connectionService.getPendingRequests(user.getId(), page, size));
+    }
+
+    @GetMapping("/sent")
+    public ResponseEntity<Page<ConnectionDTO>> getSent(@AuthenticationPrincipal CustomUserDetails user,
+                                                       @RequestParam(defaultValue = "0") int page,
+                                                       @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(connectionService.getSentRequests(user.getId(), page, size));
+    }
+
+    @GetMapping("/suggestions")
+    public ResponseEntity<List<ConnectionSuggestionDTO>> getSuggestions(@AuthenticationPrincipal CustomUserDetails user,
+                                                                        @RequestParam(defaultValue = "10") int limit) {
+        return ResponseEntity.ok(connectionService.getSuggestions(user.getId(), Math.min(limit, 50)));
+    }
+
+    @GetMapping("/mutuals/{otherUserId}")
+    public ResponseEntity<List<MutualConnectionDTO>> getMutuals(@AuthenticationPrincipal CustomUserDetails user,
+                                                                @PathVariable Long otherUserId,
+                                                                @RequestParam(defaultValue = "10") int limit) {
+        return ResponseEntity.ok(connectionService.getMutualConnections(user.getId(), otherUserId, Math.min(limit, 50)));
+    }
+
+    @GetMapping("/mutuals/{otherUserId}/count")
+    public ResponseEntity<Integer> getMutualCount(@AuthenticationPrincipal CustomUserDetails user,
+                                                  @PathVariable Long otherUserId) {
+        return ResponseEntity.ok(connectionService.getMutualConnectionCount(user.getId(), otherUserId));
     }
 }

@@ -1,114 +1,198 @@
-<div class="feed-container">
+<div class="connections-page">
 
-  <!-- Search -->
-  <div class="card">
-    <div class="card-body">
-      <div class="search-bar">
-        <input type="text" class="form-control" [(ngModel)]="searchQuery" placeholder="Search people by name or department..." (keyup.enter)="onSearch()">
-        <button class="btn btn-primary" (click)="onSearch()">Search</button>
-      </div>
+  <header class="page-head">
+    <div>
+      <h1>Network</h1>
+      <p>Manage connections, requests, and discover people.</p>
     </div>
-  </div>
-
-  <!-- Search Results -->
-  <div *ngIf="searchResults.length > 0">
-    <div class="section-title">Search Results</div>
-    <div class="card">
-      <div class="card-body p-0">
-        <div class="connection-item" *ngFor="let u of searchResults">
-          <img [src]="u.profilePicUrl || getAvatar(u.name)" class="avatar">
-          <div class="connection-info">
-            <a [routerLink]="['/profile', u.id]" class="connection-name">{{ u.name }}</a>
-            <span [class]="getRoleBadgeClass(u.role)">{{ u.role }}</span>
-            <p class="connection-headline">{{ u.position }} <span *ngIf="u.department">· {{ u.department }}</span></p>
-          </div>
-          <div class="connection-actions">
-            <button class="btn btn-primary btn-sm" *ngIf="!u.connectionStatus" (click)="sendRequest(u)">Connect</button>
-            <span class="text-muted" *ngIf="u.connectionStatus === 'PENDING'">Pending</span>
-            <span class="text-success fw-bold" *ngIf="u.connectionStatus === 'ACCEPTED'">Connected</span>
-          </div>
-        </div>
-      </div>
+    <div class="search-box">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+      <input type="text"
+             [(ngModel)]="searchQuery"
+             (keyup.enter)="onSearch()"
+             placeholder="Search people by name"
+             class="search-input">
     </div>
-  </div>
+  </header>
 
-  <!-- Tabs -->
-  <div class="tabs-bar">
-    <button [class.active]="activeTab === 'connections'" (click)="activeTab = 'connections'">
-      Connections ({{ connections.length }})
+  <div class="tabs">
+    <button class="tab" [class.active]="activeTab === 'connections'" (click)="setTab('connections')">
+      Connections <span class="count">{{ connections.length }}</span>
     </button>
-    <button [class.active]="activeTab === 'pending'" (click)="activeTab = 'pending'">
-      Pending ({{ pending.length }})
+    <button class="tab" [class.active]="activeTab === 'pending'" (click)="setTab('pending')">
+      Pending <span class="count" *ngIf="pending.length">{{ pending.length }}</span>
     </button>
-    <button [class.active]="activeTab === 'suggestions'" (click)="activeTab = 'suggestions'">
-      Suggestions
+    <button class="tab" [class.active]="activeTab === 'sent'" (click)="setTab('sent')">
+      Sent <span class="count" *ngIf="sent.length">{{ sent.length }}</span>
+    </button>
+    <button class="tab" [class.active]="activeTab === 'suggestions'" (click)="setTab('suggestions')">
+      Suggestions <span class="count" *ngIf="suggestions.length">{{ suggestions.length }}</span>
+    </button>
+    <button class="tab" *ngIf="activeTab === 'search'" [class.active]="activeTab === 'search'">
+      Search results
     </button>
   </div>
 
-  <!-- Pending Requests -->
-  <div *ngIf="activeTab === 'pending'">
-    <div class="card" *ngIf="pending.length > 0">
-      <div class="card-body p-0">
-        <div class="connection-item" *ngFor="let c of pending">
-          <img [src]="c.userProfilePic || getAvatar(c.userName)" class="avatar">
-          <div class="connection-info">
-            <a [routerLink]="['/profile', c.userId]" class="connection-name">{{ c.userName }}</a>
-            <span [class]="getRoleBadgeClass(c.userRole)">{{ c.userRole }}</span>
-            <p class="connection-headline">{{ c.userPosition }} <span *ngIf="c.userDepartment">· {{ c.userDepartment }}</span></p>
-          </div>
-          <div class="connection-actions">
-            <button class="btn btn-primary btn-sm" (click)="accept(c)">Accept</button>
-            <button class="btn btn-light btn-sm" (click)="reject(c)">Ignore</button>
-          </div>
+  <!-- CONNECTIONS -->
+  <section *ngIf="activeTab === 'connections'">
+    <div *ngIf="loading" class="state-block">
+      <div class="spinner-border spinner-border-sm"></div>
+    </div>
+    <div *ngIf="!loading && connections.length === 0" class="state-block empty">
+      <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
+      <h5>No connections yet</h5>
+      <p>Browse suggestions to find people you might know.</p>
+      <button class="btn-primary-sm" (click)="setTab('suggestions')">View suggestions</button>
+    </div>
+    <div class="row-list" *ngIf="connections.length > 0">
+      <article *ngFor="let c of connections; let i = index" class="user-row">
+        <a [routerLink]="['/profile', c.userId]" class="row-avatar-link">
+          <img [src]="getAvatar(c.userName, c.userProfilePic)" class="row-avatar">
+        </a>
+        <div class="row-main">
+          <a [routerLink]="['/profile', c.userId]" class="row-name">{{ c.userName }}</a>
+          <div class="row-pos">{{ c.userPosition }}<span *ngIf="c.userDepartment"> · {{ c.userDepartment }}</span></div>
+          <div class="row-time">Connected {{ timeAgo(c.createdAt) }} ago</div>
         </div>
-      </div>
+        <div class="row-actions">
+          <a [routerLink]="['/chat', c.userId]" class="action-btn">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+            Message
+          </a>
+          <button class="action-btn danger" (click)="remove(c, i)">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+            Remove
+          </button>
+        </div>
+      </article>
     </div>
-    <div class="empty-state" *ngIf="pending.length === 0">
-      <p>No pending invitations</p>
-    </div>
-  </div>
+  </section>
 
-  <!-- My Connections -->
-  <div *ngIf="activeTab === 'connections'">
-    <div class="card" *ngIf="connections.length > 0">
-      <div class="card-body p-0">
-        <div class="connection-item" *ngFor="let c of connections; let i = index">
-          <img [src]="c.userProfilePic || getAvatar(c.userName)" class="avatar">
-          <div class="connection-info">
-            <a [routerLink]="['/profile', c.userId]" class="connection-name">{{ c.userName }}</a>
-            <span [class]="getRoleBadgeClass(c.userRole)">{{ c.userRole }}</span>
-            <p class="connection-headline">{{ c.userPosition }} <span *ngIf="c.userDepartment">· {{ c.userDepartment }}</span></p>
+  <!-- PENDING (incoming) -->
+  <section *ngIf="activeTab === 'pending'">
+    <div *ngIf="pending.length === 0" class="state-block empty">
+      <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>
+      <h5>No pending requests</h5>
+      <p>When someone sends you a connection request, you'll see it here.</p>
+    </div>
+    <div class="row-list" *ngIf="pending.length > 0">
+      <article *ngFor="let c of pending" class="user-row">
+        <a [routerLink]="['/profile', c.userId]" class="row-avatar-link">
+          <img [src]="getAvatar(c.userName, c.userProfilePic)" class="row-avatar">
+        </a>
+        <div class="row-main">
+          <a [routerLink]="['/profile', c.userId]" class="row-name">{{ c.userName }}</a>
+          <div class="row-pos">{{ c.userPosition }}<span *ngIf="c.userDepartment"> · {{ c.userDepartment }}</span></div>
+          <div class="row-note" *ngIf="c.message">
+            <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+            <span>"{{ c.message }}"</span>
           </div>
-          <div class="connection-actions">
-            <a [routerLink]="['/chat', c.userId]" class="btn btn-outline-primary btn-sm">Message</a>
-            <button class="btn btn-light btn-sm" (click)="remove(c, i)">Remove</button>
-          </div>
+          <div class="row-time">{{ timeAgo(c.createdAt) }} ago</div>
         </div>
-      </div>
+        <div class="row-actions">
+          <button class="action-btn primary" (click)="accept(c)">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>
+            Accept
+          </button>
+          <button class="action-btn" (click)="reject(c)">Decline</button>
+        </div>
+      </article>
     </div>
-    <div class="empty-state" *ngIf="connections.length === 0 && !loading">
-      <p>No connections yet. Find people to connect with!</p>
-    </div>
-  </div>
+  </section>
 
-  <!-- Suggestions -->
-  <div *ngIf="activeTab === 'suggestions'">
-    <div class="suggestions-grid" *ngIf="suggestions.length > 0">
-      <div class="suggestion-card card" *ngFor="let s of suggestions">
-        <div class="suggestion-banner"></div>
-        <div class="card-body text-center">
-          <img [src]="s.profilePicUrl || getAvatar(s.name)" class="avatar-lg suggestion-avatar">
-          <a [routerLink]="['/profile', s.id]" class="suggestion-name">{{ s.name }}</a>
-          <p class="suggestion-headline">{{ s.position }}</p>
-          <p class="suggestion-dept" *ngIf="s.department">{{ s.department }}</p>
-          <button class="btn btn-outline-primary btn-sm w-100 mt-2" *ngIf="!s.connectionStatus" (click)="sendRequest(s)">Connect</button>
-          <button class="btn btn-light btn-sm w-100 mt-2" *ngIf="s.connectionStatus === 'PENDING'" disabled>Pending</button>
+  <!-- SENT -->
+  <section *ngIf="activeTab === 'sent'">
+    <div *ngIf="sent.length === 0" class="state-block empty">
+      <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
+      <h5>No sent requests</h5>
+      <p>Requests you've sent that haven't been accepted yet appear here.</p>
+    </div>
+    <div class="row-list" *ngIf="sent.length > 0">
+      <article *ngFor="let c of sent" class="user-row">
+        <a [routerLink]="['/profile', c.userId]" class="row-avatar-link">
+          <img [src]="getAvatar(c.userName, c.userProfilePic)" class="row-avatar">
+        </a>
+        <div class="row-main">
+          <a [routerLink]="['/profile', c.userId]" class="row-name">{{ c.userName }}</a>
+          <div class="row-pos">{{ c.userPosition }}<span *ngIf="c.userDepartment"> · {{ c.userDepartment }}</span></div>
+          <div class="row-note" *ngIf="c.message">
+            <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+            <span>"{{ c.message }}"</span>
+          </div>
+          <div class="row-time">Sent {{ timeAgo(c.createdAt) }} ago</div>
         </div>
-      </div>
+        <div class="row-actions">
+          <button class="action-btn" (click)="withdraw(c)">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+            Withdraw
+          </button>
+        </div>
+      </article>
     </div>
-    <div class="empty-state" *ngIf="suggestions.length === 0">
-      <p>No suggestions available</p>
+  </section>
+
+  <!-- SUGGESTIONS -->
+  <section *ngIf="activeTab === 'suggestions'">
+    <div *ngIf="suggestions.length === 0" class="state-block empty">
+      <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
+      <h5>No suggestions right now</h5>
+      <p>Try searching for someone by name instead.</p>
     </div>
-  </div>
+    <div class="row-list" *ngIf="suggestions.length > 0">
+      <article *ngFor="let s of suggestions" class="user-row">
+        <a [routerLink]="['/profile', s.userId]" class="row-avatar-link">
+          <img [src]="getAvatar(s.name, s.profilePicUrl)" class="row-avatar">
+        </a>
+        <div class="row-main">
+          <a [routerLink]="['/profile', s.userId]" class="row-name">{{ s.name }}</a>
+          <div class="row-pos">{{ s.position }}<span *ngIf="s.department"> · {{ s.department }}</span></div>
+          <div class="row-reason">{{ s.reason }}</div>
+        </div>
+        <div class="row-actions">
+          <button class="action-btn primary" (click)="sendFromSuggestion(s)">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+            Connect
+          </button>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- SEARCH -->
+  <section *ngIf="activeTab === 'search'">
+    <div *ngIf="searchResults.length === 0 && searchQuery" class="state-block empty">
+      <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+      <h5>No matches for "{{ searchQuery }}"</h5>
+    </div>
+    <div class="row-list" *ngIf="searchResults.length > 0">
+      <article *ngFor="let u of searchResults" class="user-row">
+        <a [routerLink]="['/profile', u.id]" class="row-avatar-link">
+          <img [src]="getAvatar(u.name, u.profilePicUrl)" class="row-avatar">
+        </a>
+        <div class="row-main">
+          <a [routerLink]="['/profile', u.id]" class="row-name">{{ u.name }}</a>
+          <div class="row-pos">{{ u.position }}<span *ngIf="u.department"> · {{ u.department }}</span></div>
+        </div>
+        <div class="row-actions">
+          <button *ngIf="!u.connectionStatus || u.connectionStatus === 'NONE'"
+                  class="action-btn primary"
+                  (click)="sendQuickRequest(u)">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+            Connect
+          </button>
+          <span *ngIf="u.connectionStatus === 'PENDING'" class="status-pill">Pending</span>
+          <span *ngIf="u.connectionStatus === 'ACCEPTED'" class="status-pill connected">Connected</span>
+        </div>
+      </article>
+    </div>
+  </section>
 
 </div>
+
+<app-connect-request-dialog *ngIf="dialogUser"
+                            [userId]="dialogUser.userId"
+                            [userName]="dialogUser.name"
+                            [userAvatarUrl]="dialogUser.profilePicUrl"
+                            [position]="dialogUser.position"
+                            (close)="closeDialog()"
+                            (sent)="onConnectionSent($event)"></app-connect-request-dialog>

@@ -12,19 +12,46 @@ export const authGuard = () => {
 };
 
 export const routes: Routes = [
+  // ===== Public =====
   { path: 'login', loadComponent: () => import('./pages/login/login').then(m => m.LoginComponent) },
   { path: 'register', loadComponent: () => import('./pages/register/register').then(m => m.RegisterComponent) },
+
+  // ===== Feed & Profile =====
   { path: 'feed', loadComponent: () => import('./pages/feed/feed').then(m => m.FeedComponent), canActivate: [authGuard] },
   { path: 'profile/:id', loadComponent: () => import('./pages/profile/profile').then(m => m.ProfileComponent), canActivate: [authGuard] },
+
+  // ===== Connections =====
   { path: 'connections', loadComponent: () => import('./pages/connections/connections').then(m => m.ConnectionsComponent), canActivate: [authGuard] },
+
+  // ===== Chat =====
   { path: 'chat', loadComponent: () => import('./pages/chat/chat').then(m => m.ChatComponent), canActivate: [authGuard] },
   { path: 'chat/:userId', loadComponent: () => import('./pages/chat/chat').then(m => m.ChatComponent), canActivate: [authGuard] },
+
+  // ===== Events =====
   { path: 'events', loadComponent: () => import('./pages/events/events').then(m => m.EventsComponent), canActivate: [authGuard] },
   { path: 'events/:id', loadComponent: () => import('./pages/event-detail/event-detail.component').then(m => m.EventDetailComponent), canActivate: [authGuard] },
+
+  // ===== Notifications =====
   { path: 'notifications', loadComponent: () => import('./pages/notifications/notifications.component').then(m => m.NotificationsComponent), canActivate: [authGuard] },
+
+  // ===== Communities =====
   { path: 'communities', loadComponent: () => import('./pages/communities/communities.component').then(m => m.CommunitiesComponent), canActivate: [authGuard] },
   { path: 'communities/:id', loadComponent: () => import('./pages/community-detail/community-detail.component').then(m => m.CommunityDetailComponent), canActivate: [authGuard] },
   { path: 'communities/:id/posts/:postId', loadComponent: () => import('./pages/community-post/community-post.component').then(m => m.CommunityPostComponent), canActivate: [authGuard] },
+
+  // ===== Bookmarks =====
+  { path: 'bookmarks', loadComponent: () => import('./pages/bookmarks/bookmarks.component').then(m => m.BookmarksComponent), canActivate: [authGuard] },
+
+  // ===== Hashtag =====
+  { path: 'hashtag/:tag', loadComponent: () => import('./pages/hashtag/hashtag.component').then(m => m.HashtagComponent), canActivate: [authGuard] },
+
+  // ===== Achievements =====
+  { path: 'achievements', loadComponent: () => import('./pages/achievements/achievements.component').then(m => m.AchievementsComponent), canActivate: [authGuard] },
+
+  // ===== Skill Search (Batch 3) =====
+  { path: 'skills', loadComponent: () => import('./pages/skill-search/skill-search.component').then(m => m.SkillSearchComponent), canActivate: [authGuard] },
+
+  // ===== Fallbacks =====
   { path: '', redirectTo: 'feed', pathMatch: 'full' },
   { path: '**', redirectTo: 'feed' }
 ];

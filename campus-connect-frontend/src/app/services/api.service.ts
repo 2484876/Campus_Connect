@@ -11,8 +11,12 @@ import {
   ExperienceDTO, MessageDeleteDTO, ReactionDTO,
   HashtagDTO, ReportRequest, ReportDTO, SearchResultDTO,
   PollDTO, CreatePollRequest,
-  KudosDTO, CreateKudosRequest, AchievementDTO, AchievementStats, StreakDTO,
-  StoryDTO, UserStoriesGroupDTO, CreateStoryRequest, StoryViewer
+  KudosDTO, CreateKudosRequest,
+  AchievementDTO, AchievementStats, StreakDTO,
+  StoryDTO, UserStoriesGroupDTO, CreateStoryRequest, StoryViewer,
+  ConnectionSuggestionDTO, MutualConnectionDTO,
+  SkillEndorsementDTO, CreateEndorsementRequest, EndorsementSummaryDTO,
+  ProfileCompletionDTO, SkillSuggestion
 } from '../models';
 
 @Injectable({ providedIn: 'root' })
@@ -21,8 +25,6 @@ export class ApiService {
   private api = environment.apiUrl;
 
   constructor(private http: HttpClient) { }
-
-  // ===== UPLOADS =====
 
   uploadImage(file: File): Observable<{ url: string }> {
     const fd = new FormData(); fd.append('file', file);
@@ -41,10 +43,8 @@ export class ApiService {
     return this.http.post<UserDTO>(`${this.api}/users/me/avatar`, fd);
   }
 
-  // ===== FEED / POSTS =====
-
-  getFeed(page: number, size = 10): Observable<PageResponse<PostDTO>> {
-    return this.http.get<PageResponse<PostDTO>>(`${this.api}/feed?page=${page}&size=${size}`);
+  getFeed(page: number, size = 10, mode: 'ALL' | 'FOR_YOU' = 'ALL'): Observable<PageResponse<PostDTO>> {
+    return this.http.get<PageResponse<PostDTO>>(`${this.api}/feed?page=${page}&size=${size}&mode=${mode}`);
   }
   getPublicFeed(page: number): Observable<PageResponse<PostDTO>> {
     return this.http.get<PageResponse<PostDTO>>(`${this.api}/feed/public?page=${page}`);
@@ -65,11 +65,15 @@ export class ApiService {
     return this.http.get<PageResponse<CommentDTO>>(`${this.api}/posts/${postId}/comments?page=${page}`);
   }
 
-  // ===== USERS =====
-
-  getProfile(): Observable<UserDTO> { return this.http.get<UserDTO>(`${this.api}/users/me`); }
-  getUser(id: number): Observable<UserDTO> { return this.http.get<UserDTO>(`${this.api}/users/${id}`); }
-  updateProfile(data: any): Observable<UserDTO> { return this.http.put<UserDTO>(`${this.api}/users/me`, data); }
+  getProfile(): Observable<UserDTO> {
+    return this.http.get<UserDTO>(`${this.api}/users/me`);
+  }
+  getUser(id: number): Observable<UserDTO> {
+    return this.http.get<UserDTO>(`${this.api}/users/${id}`);
+  }
+  updateProfile(data: any): Observable<UserDTO> {
+    return this.http.put<UserDTO>(`${this.api}/users/me`, data);
+  }
   searchUsers(q: string, page = 0): Observable<PageResponse<UserDTO>> {
     return this.http.get<PageResponse<UserDTO>>(`${this.api}/users/search?q=${q}&page=${page}`);
   }
@@ -93,16 +97,10 @@ export class ApiService {
     return this.http.get<UserDTO[]>(`${this.api}/users/celebrants`);
   }
 
-  // ===== CONNECTIONS =====
-
-  getConnections(page = 0): Observable<PageResponse<ConnectionDTO>> {
-    return this.http.get<PageResponse<ConnectionDTO>>(`${this.api}/connections?page=${page}`);
-  }
-  getPendingRequests(page = 0): Observable<PageResponse<ConnectionDTO>> {
-    return this.http.get<PageResponse<ConnectionDTO>>(`${this.api}/connections/pending?page=${page}`);
-  }
-  sendConnectionRequest(receiverId: number): Observable<ConnectionDTO> {
-    return this.http.post<ConnectionDTO>(`${this.api}/connections/request`, { receiverId });
+  sendConnectionRequest(receiverId: number, message?: string): Observable<ConnectionDTO> {
+    const body: any = { receiverId };
+    if (message && message.trim()) body.message = message.trim();
+    return this.http.post<ConnectionDTO>(`${this.api}/connections/request`, body);
   }
   acceptConnection(id: number): Observable<ConnectionDTO> {
     return this.http.put<ConnectionDTO>(`${this.api}/connections/${id}/accept`, {});
@@ -113,8 +111,27 @@ export class ApiService {
   removeConnection(id: number): Observable<void> {
     return this.http.delete<void>(`${this.api}/connections/${id}`);
   }
-
-  // ===== MESSAGES =====
+  withdrawConnection(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.api}/connections/${id}/withdraw`);
+  }
+  getConnections(page = 0): Observable<PageResponse<ConnectionDTO>> {
+    return this.http.get<PageResponse<ConnectionDTO>>(`${this.api}/connections?page=${page}`);
+  }
+  getPendingRequests(page = 0): Observable<PageResponse<ConnectionDTO>> {
+    return this.http.get<PageResponse<ConnectionDTO>>(`${this.api}/connections/pending?page=${page}`);
+  }
+  getSentRequests(page = 0): Observable<PageResponse<ConnectionDTO>> {
+    return this.http.get<PageResponse<ConnectionDTO>>(`${this.api}/connections/sent?page=${page}`);
+  }
+  getConnectionSuggestions(limit = 10): Observable<ConnectionSuggestionDTO[]> {
+    return this.http.get<ConnectionSuggestionDTO[]>(`${this.api}/connections/suggestions?limit=${limit}`);
+  }
+  getMutualConnections(otherUserId: number, limit = 10): Observable<MutualConnectionDTO[]> {
+    return this.http.get<MutualConnectionDTO[]>(`${this.api}/connections/mutuals/${otherUserId}?limit=${limit}`);
+  }
+  getMutualConnectionCount(otherUserId: number): Observable<number> {
+    return this.http.get<number>(`${this.api}/connections/mutuals/${otherUserId}/count`);
+  }
 
   sendMessage(receiverId: number, content: string): Observable<MessageDTO> {
     return this.http.post<MessageDTO>(`${this.api}/messages`, { receiverId, content });
@@ -146,91 +163,67 @@ export class ApiService {
     return this.http.get<ReactionDTO[]>(`${this.api}/messages/${messageId}/reactions`);
   }
 
-  // ===== NOTIFICATIONS =====
-
   getNotifications(page = 0): Observable<PageResponse<NotificationDTO>> {
     return this.http.get<PageResponse<NotificationDTO>>(`${this.api}/notifications?page=${page}`);
   }
-  getUnreadCount(): Observable<any> { return this.http.get(`${this.api}/notifications/unread-count`); }
-  markNotificationsRead(): Observable<void> { return this.http.put<void>(`${this.api}/notifications/read`, {}); }
-
-  // ============================================================
-  // ===== EVENTS (BATCH 5 - UPGRADED) =====
-  // ============================================================
+  getUnreadCount(): Observable<any> {
+    return this.http.get(`${this.api}/notifications/unread-count`);
+  }
+  markNotificationsRead(): Observable<void> {
+    return this.http.put<void>(`${this.api}/notifications/read`, {});
+  }
 
   getEvents(page = 0, size = 10): Observable<PageResponse<EventDTO>> {
     return this.http.get<PageResponse<EventDTO>>(`${this.api}/events?page=${page}&size=${size}`);
   }
-
   getUpcomingEvents(page = 0, size = 10): Observable<PageResponse<EventDTO>> {
     return this.http.get<PageResponse<EventDTO>>(`${this.api}/events/upcoming?page=${page}&size=${size}`);
   }
-
   getPastEvents(page = 0, size = 10): Observable<PageResponse<EventDTO>> {
     return this.http.get<PageResponse<EventDTO>>(`${this.api}/events/past?page=${page}&size=${size}`);
   }
-
   getThisWeekEvents(page = 0, size = 10): Observable<PageResponse<EventDTO>> {
     return this.http.get<PageResponse<EventDTO>>(`${this.api}/events/this-week?page=${page}&size=${size}`);
   }
-
   getEventsByCategory(category: string, page = 0, size = 10): Observable<PageResponse<EventDTO>> {
     return this.http.get<PageResponse<EventDTO>>(`${this.api}/events/category/${category}?page=${page}&size=${size}`);
   }
-
   getMyEvents(page = 0, size = 10): Observable<PageResponse<EventDTO>> {
     return this.http.get<PageResponse<EventDTO>>(`${this.api}/events/mine?page=${page}&size=${size}`);
   }
-
   getEventById(id: number): Observable<EventDTO> {
     return this.http.get<EventDTO>(`${this.api}/events/${id}`);
   }
-
   createEvent(data: CreateEventRequest): Observable<EventDTO> {
     return this.http.post<EventDTO>(`${this.api}/events`, data);
   }
-
   updateEvent(id: number, data: Partial<CreateEventRequest>): Observable<EventDTO> {
     return this.http.put<EventDTO>(`${this.api}/events/${id}`, data);
   }
-
   deleteEvent(id: number): Observable<void> {
     return this.http.delete<void>(`${this.api}/events/${id}`);
   }
-
   setRsvp(eventId: number, status: RsvpStatus): Observable<EventDTO> {
     return this.http.post<EventDTO>(`${this.api}/events/${eventId}/rsvp`, { status });
   }
-
   removeRsvp(eventId: number): Observable<void> {
     return this.http.delete<void>(`${this.api}/events/${eventId}/rsvp`);
   }
-
   getEventAttendees(eventId: number, status: RsvpStatus = 'GOING'): Observable<EventAttendeeDTO[]> {
     return this.http.get<EventAttendeeDTO[]>(`${this.api}/events/${eventId}/attendees?status=${status}`);
   }
-
   downloadEventIcs(eventId: number): string {
     return `${this.api}/events/${eventId}/ics`;
   }
-
-  // ===== EVENT CHAT =====
-
   getEventChatAccess(eventId: number): Observable<{ canAccess: boolean }> {
     return this.http.get<{ canAccess: boolean }>(`${this.api}/events/${eventId}/chat/access`);
   }
-
   getEventChatMessages(eventId: number, page = 0, size = 50): Observable<PageResponse<EventChatMessageDTO>> {
     return this.http.get<PageResponse<EventChatMessageDTO>>(`${this.api}/events/${eventId}/chat?page=${page}&size=${size}`);
   }
-
   sendEventChatMessage(eventId: number, content: string): Observable<EventChatMessageDTO> {
     return this.http.post<EventChatMessageDTO>(`${this.api}/events/${eventId}/chat`, { content });
   }
-
-  // ============================================================
-  // ===== COMMUNITIES =====
-  // ============================================================
 
   getAllCommunities(page = 0): Observable<PageResponse<CommunityDTO>> {
     return this.http.get<PageResponse<CommunityDTO>>(`${this.api}/communities?page=${page}`);
@@ -307,43 +300,30 @@ export class ApiService {
     return this.http.delete<void>(`${this.api}/communities/posts/${postId}`);
   }
 
-  // ===== COMMUNITY Q&A (BATCH 5) =====
-
   acceptAnswer(postId: number, commentId: number): Observable<CommunityPostDTO> {
     return this.http.post<CommunityPostDTO>(`${this.api}/communities/posts/${postId}/accept-answer/${commentId}`, {});
   }
-
   unacceptAnswer(postId: number): Observable<CommunityPostDTO> {
     return this.http.delete<CommunityPostDTO>(`${this.api}/communities/posts/${postId}/accept-answer`);
   }
-
   unmaskAnonymous(postId: number): Observable<CommunityPostDTO> {
     return this.http.post<CommunityPostDTO>(`${this.api}/communities/posts/${postId}/unmask`, {});
   }
-
-  // ===== COMMUNITY RESOURCES (BATCH 5) =====
 
   getCommunityResources(communityId: number, q?: string, page = 0, size = 20): Observable<PageResponse<CommunityResourceDTO>> {
     let url = `${this.api}/communities/${communityId}/resources?page=${page}&size=${size}`;
     if (q) url += `&q=${encodeURIComponent(q)}`;
     return this.http.get<PageResponse<CommunityResourceDTO>>(url);
   }
-
   addCommunityResource(communityId: number, data: CreateResourceRequest): Observable<CommunityResourceDTO> {
     return this.http.post<CommunityResourceDTO>(`${this.api}/communities/${communityId}/resources`, data);
   }
-
   deleteCommunityResource(communityId: number, resourceId: number): Observable<void> {
     return this.http.delete<void>(`${this.api}/communities/${communityId}/resources/${resourceId}`);
   }
-
   trackResourceClick(communityId: number, resourceId: number): Observable<CommunityResourceDTO> {
     return this.http.post<CommunityResourceDTO>(`${this.api}/communities/${communityId}/resources/${resourceId}/click`, {});
   }
-
-  // ============================================================
-  // ===== BOOKMARKS =====
-  // ============================================================
 
   toggleBookmark(postId: number): Observable<{ bookmarked: boolean }> {
     return this.http.post<{ bookmarked: boolean }>(`${this.api}/bookmarks/${postId}`, {});
@@ -355,8 +335,6 @@ export class ApiService {
     return this.http.get<{ count: number }>(`${this.api}/bookmarks/count`);
   }
 
-  // ===== HASHTAGS =====
-
   getTrendingHashtags(limit = 8): Observable<HashtagDTO[]> {
     return this.http.get<HashtagDTO[]>(`${this.api}/hashtags/trending?limit=${limit}`);
   }
@@ -366,8 +344,6 @@ export class ApiService {
   getPostsByHashtag(tag: string): Observable<PostDTO[]> {
     return this.http.get<PostDTO[]>(`${this.api}/hashtags/${tag}/posts`);
   }
-
-  // ===== REPORTS / BLOCK / MODERATION =====
 
   submitReport(req: ReportRequest): Observable<ReportDTO> {
     return this.http.post<ReportDTO>(`${this.api}/reports`, req);
@@ -388,13 +364,9 @@ export class ApiService {
     return this.http.put<void>(`${this.api}/admin/reports/${id}?status=${status}`, {});
   }
 
-  // ===== SEARCH =====
-
   universalSearch(q: string): Observable<SearchResultDTO> {
     return this.http.get<SearchResultDTO>(`${this.api}/search?q=${encodeURIComponent(q)}`);
   }
-
-  // ===== POLLS =====
 
   createPoll(postId: number, data: CreatePollRequest): Observable<PollDTO> {
     return this.http.post<PollDTO>(`${this.api}/polls/posts/${postId}`, data);
@@ -405,8 +377,6 @@ export class ApiService {
   votePoll(pollId: number, optionId: number): Observable<PollDTO> {
     return this.http.post<PollDTO>(`${this.api}/polls/${pollId}/vote/${optionId}`, {});
   }
-
-  // ===== KUDOS =====
 
   giveKudos(req: CreateKudosRequest): Observable<KudosDTO> {
     return this.http.post<KudosDTO>(`${this.api}/kudos`, req);
@@ -424,8 +394,6 @@ export class ApiService {
     return this.http.get<{ received: number; given: number }>(`${this.api}/kudos/stats/${userId}`);
   }
 
-  // ===== ACHIEVEMENTS / STREAKS =====
-
   getMyAchievements(): Observable<AchievementDTO[]> {
     return this.http.get<AchievementDTO[]>(`${this.api}/achievements/me`);
   }
@@ -442,8 +410,6 @@ export class ApiService {
     return this.http.get<StreakDTO>(`${this.api}/streak/me`);
   }
 
-  // ===== STORIES =====
-
   createStory(req: CreateStoryRequest): Observable<StoryDTO> {
     return this.http.post<StoryDTO>(`${this.api}/stories`, req);
   }
@@ -458,5 +424,40 @@ export class ApiService {
   }
   getStoryViewers(storyId: number): Observable<StoryViewer[]> {
     return this.http.get<StoryViewer[]>(`${this.api}/stories/${storyId}/viewers`);
+  }
+
+  createEndorsement(data: CreateEndorsementRequest): Observable<SkillEndorsementDTO> {
+    return this.http.post<SkillEndorsementDTO>(`${this.api}/endorsements`, data);
+  }
+  removeEndorsement(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.api}/endorsements/${id}`);
+  }
+  getEndorsementsForUser(userId: number, page = 0): Observable<PageResponse<SkillEndorsementDTO>> {
+    return this.http.get<PageResponse<SkillEndorsementDTO>>(`${this.api}/endorsements/user/${userId}?page=${page}`);
+  }
+  getMyEndorsementsForUser(userId: number, endorserId: number): Observable<SkillEndorsementDTO[]> {
+    return this.http.get<SkillEndorsementDTO[]>(`${this.api}/endorsements/user/${userId}/by/${endorserId}`);
+  }
+  getEndorsersForSkill(userId: number, skill: string): Observable<SkillEndorsementDTO[]> {
+    return this.http.get<SkillEndorsementDTO[]>(`${this.api}/endorsements/user/${userId}/skill/${encodeURIComponent(skill)}`);
+  }
+  getEndorsementSummary(userId: number): Observable<EndorsementSummaryDTO> {
+    return this.http.get<EndorsementSummaryDTO>(`${this.api}/endorsements/user/${userId}/summary`);
+  }
+
+  getMyProfileCompletion(): Observable<ProfileCompletionDTO> {
+    return this.http.get<ProfileCompletionDTO>(`${this.api}/career/completion/me`);
+  }
+  getProfileCompletion(userId: number): Observable<ProfileCompletionDTO> {
+    return this.http.get<ProfileCompletionDTO>(`${this.api}/career/completion/user/${userId}`);
+  }
+  searchUsersBySkill(skill: string, page = 0): Observable<PageResponse<UserDTO>> {
+    return this.http.get<PageResponse<UserDTO>>(`${this.api}/career/skills/search?skill=${encodeURIComponent(skill)}&page=${page}`);
+  }
+  autocompleteSkills(q: string, limit = 10): Observable<SkillSuggestion[]> {
+    return this.http.get<SkillSuggestion[]>(`${this.api}/career/skills/autocomplete?q=${encodeURIComponent(q)}&limit=${limit}`);
+  }
+  getTrendingSkills(limit = 10): Observable<SkillSuggestion[]> {
+    return this.http.get<SkillSuggestion[]>(`${this.api}/career/skills/trending?limit=${limit}`);
   }
 }

@@ -1,0 +1,48 @@
+<div class="modal-backdrop" (click)="close.emit()">
+  <div class="modal-frame" (click)="$event.stopPropagation()">
+
+    <div class="modal-head">
+      <h3>Connect</h3>
+      <button class="icon-btn" (click)="close.emit()" title="Close">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+      </button>
+    </div>
+
+    <div class="modal-body">
+
+      <div class="user-row">
+        <img [src]="avatar()" class="user-avatar">
+        <div>
+          <div class="user-name">{{ userName }}</div>
+          <div class="user-pos" *ngIf="position">{{ position }}</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Add a note (optional)</label>
+        <textarea class="input"
+                  [(ngModel)]="message"
+                  rows="4"
+                  maxlength="300"
+                  placeholder="Hi, I'd like to add you to my network..."></textarea>
+        <div class="char-count" [class.over]="atLimit">{{ charCount }} / 300</div>
+      </div>
+
+      <div class="hint">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>
+        A personal note makes you 3x more likely to be accepted.
+      </div>
+
+      <div class="error-bar" *ngIf="error">{{ error }}</div>
+
+    </div>
+
+    <div class="modal-foot">
+      <button class="btn-ghost-sm" (click)="close.emit()">Cancel</button>
+      <button class="btn-primary-sm" (click)="send()" [disabled]="submitting">
+        {{ submitting ? 'Sending...' : 'Send request' }}
+      </button>
+    </div>
+
+  </div>
+</div>

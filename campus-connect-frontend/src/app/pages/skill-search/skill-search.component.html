@@ -1,0 +1,83 @@
+<div class="skill-search-page">
+
+  <header class="page-head">
+    <div>
+      <h1>Find by skill</h1>
+      <p>Discover people across the org by what they know.</p>
+    </div>
+  </header>
+
+  <div class="search-wrap">
+    <div class="search-box">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+      <input type="text"
+             [(ngModel)]="query"
+             (input)="onQueryChange()"
+             (keyup.enter)="search()"
+             (focus)="onQueryChange()"
+             (blur)="setTimeout(() => showAutocomplete = false, 200)"
+             placeholder="Search skills... e.g. Java, Kubernetes, Public Speaking"
+             class="search-input">
+      <button class="btn-primary-sm" (click)="search()">Search</button>
+    </div>
+
+    <div class="autocomplete" *ngIf="showAutocomplete && autocomplete.length > 0">
+      <button *ngFor="let s of autocomplete"
+              class="ac-item"
+              (mousedown)="pickSuggestion(s)">
+        <span class="ac-skill">{{ s.skill }}</span>
+        <span class="ac-count">{{ s.count }} {{ s.count === 1 ? 'person' : 'people' }}</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Trending skills (shown when no results) -->
+  <div class="trending-section" *ngIf="results.length === 0 && !loading && trending.length > 0">
+    <h3 class="section-title">Trending skills</h3>
+    <div class="trending-grid">
+      <button *ngFor="let s of trending"
+              class="trending-chip"
+              (click)="pickTrending(s)">
+        <span class="t-skill">{{ s.skill }}</span>
+        <span class="t-count">{{ s.count }}</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div *ngIf="loading && results.length === 0" class="state-block">
+    <div class="spinner-border spinner-border-sm"></div>
+  </div>
+
+  <div *ngIf="!loading && results.length === 0 && query" class="state-block empty">
+    <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+    <h5>No people found for "{{ query }}"</h5>
+    <p>Try another skill or check the spelling.</p>
+  </div>
+
+  <div *ngIf="results.length > 0" class="results-section">
+    <h3 class="section-title">{{ results.length }} {{ results.length === 1 ? 'person' : 'people' }} with "{{ query }}"</h3>
+    <div class="row-list">
+      <article *ngFor="let u of results" class="user-row">
+        <a [routerLink]="['/profile', u.id]" class="row-avatar-link">
+          <img [src]="avatar(u.name, u.profilePicUrl)" class="row-avatar">
+        </a>
+        <div class="row-main">
+          <a [routerLink]="['/profile', u.id]" class="row-name">{{ u.name }}</a>
+          <div class="row-pos">{{ u.position }}<span *ngIf="u.department"> · {{ u.department }}</span></div>
+          <div class="row-bio" *ngIf="u.bio">{{ u.bio }}</div>
+        </div>
+        <div class="row-actions">
+          <a [routerLink]="['/profile', u.id]" class="action-btn primary">View profile</a>
+        </div>
+      </article>
+    </div>
+
+    <div class="load-more" *ngIf="hasMore">
+      <button class="btn-ghost-sm" (click)="loadMore()" [disabled]="loading">
+        {{ loading ? 'Loading...' : 'Load more' }}
+      </button>
+    </div>
+  </div>
+
+</div>

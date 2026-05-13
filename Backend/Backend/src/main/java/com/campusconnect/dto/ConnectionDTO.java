@@ -1,6 +1,8 @@
 package com.campusconnect.dto;
+
 import lombok.*;
 import java.time.LocalDateTime;
+
 @Data @Builder @NoArgsConstructor @AllArgsConstructor
 public class ConnectionDTO {
     private Long connectionId;
@@ -11,5 +13,7 @@ public class ConnectionDTO {
     private String userRole;
     private String userDepartment;
     private String status;
+    private String message;          // optional note from sender
+    private boolean sentByMe;        // true if current user is the sender (used to show "withdraw" vs "accept")
     private LocalDateTime createdAt;
 }

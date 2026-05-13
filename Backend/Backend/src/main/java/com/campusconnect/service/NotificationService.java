@@ -55,6 +55,7 @@ public class NotificationService {
             case CONNECTION_ACCEPTED -> n.getActor().getName() + " accepted your connection request";
             case MESSAGE -> n.getActor().getName() + " sent you a message";
             case POST -> n.getActor().getName() + " created a new post";
+            case ENDORSEMENT -> n.getActor().getName() + " endorsed you";
         };
         return NotificationDTO.builder()
                 .id(n.getId()).type(n.getType().name())

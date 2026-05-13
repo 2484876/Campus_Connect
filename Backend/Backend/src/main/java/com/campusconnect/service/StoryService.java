@@ -10,8 +10,11 @@ import com.campusconnect.repository.StoryRepository;
 import com.campusconnect.repository.StoryViewRepository;
 import com.campusconnect.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -21,6 +24,8 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class StoryService {
+
+    private static final Logger log = LoggerFactory.getLogger(StoryService.class);
 
     private final StoryRepository storyRepository;
     private final StoryViewRepository viewRepository;
@@ -91,6 +96,9 @@ public class StoryService {
         Story s = storyRepository.findById(storyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Story not found"));
         if (!s.getUser().getId().equals(userId)) throw new BadRequestException("Not your story");
+        // delete this story's views first to avoid FK violation
+        // (works whether or not the FK has ON DELETE CASCADE)
+        viewRepository.deleteByStoryId(storyId);
         storyRepository.delete(s);
     }
 
@@ -108,10 +116,24 @@ public class StoryService {
         }).collect(Collectors.toList());
     }
 
+    /**
+     * Runs hourly. Deletes story_views for expired stories first, then the stories.
+     * Uses REQUIRES_NEW so even if a swallowed error left transaction marked rollback-only,
+     * we get a fresh transaction next tick.
+     */
     @Scheduled(fixedDelay = 3600000)
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void cleanupExpired() {
-        try { storyRepository.deleteExpired(LocalDateTime.now()); } catch (Exception ignored) {}
+        try {
+            LocalDateTime now = LocalDateTime.now();
+            int viewsDeleted = viewRepository.deleteViewsOfExpiredStories(now);
+            int storiesDeleted = storyRepository.deleteExpired(now);
+            if (storiesDeleted > 0) {
+                log.info("Story cleanup: removed {} stories and {} views", storiesDeleted, viewsDeleted);
+            }
+        } catch (Exception e) {
+            log.warn("Story cleanup failed: {}", e.getMessage());
+        }
     }
 
     private StoryDTO toDTO(Story s, Long viewerId) {

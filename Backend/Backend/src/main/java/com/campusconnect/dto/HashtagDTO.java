@@ -6,5 +6,5 @@ import lombok.*;
 public class HashtagDTO {
     private Long id;
     private String tag;
-    private Long usageCount;
+    private Integer usageCount;
 }
