@@ -51,6 +51,10 @@
           <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
           Message
         </button>
+        <button class="btn-ghost-sm kudos-trigger" (click)="openKudosDialog()" title="Send kudos">
+          <span class="kudos-emoji">🙌</span>
+          <span>Kudos</span>
+        </button>
         <span class="status-pill connected" *ngIf="user.connectionStatus === 'ACCEPTED'">Connected</span>
       </div>
 
@@ -66,6 +70,9 @@
         <div class="profile-meta-row">
           <span class="meta-item">
             <strong>{{ user.connectionCount }}</strong> connections
+          </span>
+          <span class="meta-item" *ngIf="kudosReceived.length > 0">
+            <strong>{{ kudosReceived.length }}</strong> kudos
           </span>
           <span class="mutual-badge" *ngIf="!isOwnProfile && mutualCount > 0">
             <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -101,6 +108,24 @@
       <div class="form-actions">
         <button class="btn-primary-sm" (click)="saveProfile()">Save changes</button>
         <button class="btn-ghost-sm" (click)="editing = false">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card kudos-bar-card" *ngIf="kudosReceived.length > 0">
+    <div class="card-body kudos-bar-body">
+      <div class="kudos-bar-header">
+        <h5 class="section-h">🙌 Kudos</h5>
+        <span class="kudos-bar-count">{{ kudosReceived.length }}</span>
+      </div>
+      <div class="kudos-bar-scroll">
+        <div class="kudos-bubble" *ngFor="let k of kudosReceived; let i = index" (click)="openKudosViewer(i)">
+          <div class="kudos-ring">
+            <img [src]="k.giverProfilePic || getAvatar(k.giverName)" class="kudos-bubble-avatar">
+            <div class="kudos-badge">{{ getKudosEmoji(k.category) }}</div>
+          </div>
+          <span class="kudos-bubble-name">{{ k.giverName.split(' ')[0] }}</span>
+        </div>
       </div>
     </div>
   </div>
@@ -259,6 +284,46 @@
   <div class="spinner-border spinner-border-sm"></div>
 </div>
 
+<div class="kudos-viewer" *ngIf="kudosViewerOpen" (click)="closeKudosViewer()">
+  <div class="kudos-viewer-inner" (click)="$event.stopPropagation()">
+    <button class="kv-prev" (click)="prevKudos()" *ngIf="activeKudosIdx > 0">‹</button>
+    <button class="kv-next" (click)="nextKudos()" *ngIf="activeKudosIdx < kudosReceived.length - 1">›</button>
+    <button class="kv-close" (click)="closeKudosViewer()">✕</button>
+
+    <ng-container *ngIf="currentKudos() as k">
+      <div class="kv-progress-wrap">
+        <div *ngFor="let _ of kudosReceived; let idx = index" class="kv-progress-bar">
+          <div class="kv-progress-fill"
+               [style.width.%]="idx < activeKudosIdx ? 100 : (idx === activeKudosIdx ? kudosProgress : 0)"></div>
+        </div>
+      </div>
+
+      <div class="kv-header">
+        <img [src]="k.giverProfilePic || getAvatar(k.giverName)" class="kv-avatar">
+        <div class="kv-header-info">
+          <div class="kv-giver-name">{{ k.giverName }}</div>
+          <div class="kv-giver-pos" *ngIf="k.giverPosition">{{ k.giverPosition }}</div>
+        </div>
+        <span class="kv-time">{{ timeAgo(k.createdAt) }}</span>
+      </div>
+
+      <div class="kv-content">
+        <div class="kv-emoji-big">{{ getKudosEmoji(k.category) }}</div>
+        <div class="kv-category">{{ getKudosLabel(k.category) }}</div>
+        <div class="kv-divider"></div>
+        <p class="kv-message" *ngIf="k.message">"{{ k.message }}"</p>
+        <p class="kv-message kv-no-message" *ngIf="!k.message">
+          Recognized {{ user?.name?.split(' ')?.[0] }} for {{ getKudosLabel(k.category) | lowercase }}
+        </p>
+      </div>
+
+      <div class="kv-footer">
+        <span class="kv-count">{{ activeKudosIdx + 1 }} of {{ kudosReceived.length }}</span>
+      </div>
+    </ng-container>
+  </div>
+</div>
+
 <app-connect-request-dialog *ngIf="showConnectDialog && user"
                             [userId]="user.id"
                             [userName]="user.name"
@@ -266,3 +331,9 @@
                             [position]="user.position"
                             (close)="closeConnectDialog()"
                             (sent)="onConnectionSent($event)"></app-connect-request-dialog>
+
+<app-kudos-dialog *ngIf="showKudosDialog && user"
+                  [receiverId]="user.id"
+                  [receiverName]="user.name"
+                  (close)="closeKudosDialog()"
+                  (sent)="onKudosSent()"></app-kudos-dialog>

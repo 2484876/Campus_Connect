@@ -15,7 +15,7 @@
              (input)="onQueryChange()"
              (keyup.enter)="search()"
              (focus)="onQueryChange()"
-             (blur)="setTimeout(() => showAutocomplete = false, 200)"
+             (blur)="onBlur()"
              placeholder="Search skills... e.g. Java, Kubernetes, Public Speaking"
              class="search-input">
       <button class="btn-primary-sm" (click)="search()">Search</button>

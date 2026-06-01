@@ -1,0 +1,52 @@
+<div class="toast-stack" *ngIf="toasts.length > 0">
+  <div *ngFor="let t of toasts; trackBy: trackById"
+       class="toast-card"
+       [class.success]="t.type === 'success'"
+       [class.error]="t.type === 'error'"
+       [class.info]="t.type === 'info'"
+       [class.warning]="t.type === 'warning'"
+       [class.has-action]="t.action"
+       (mouseenter)="pause(t)"
+       (mouseleave)="resume(t)"
+       (click)="runAction(t)">
+
+    <div class="toast-icon">{{ iconFor(t.type) }}</div>
+
+    <div class="toast-body">
+      <div class="toast-message">{{ t.message }}</div>
+      <button class="toast-action-btn" *ngIf="t.action" (click)="$event.stopPropagation(); runAction(t)">
+        {{ t.action.label }}
+      </button>
+    </div>
+
+    <button class="toast-close" (click)="$event.stopPropagation(); dismiss(t)" title="Dismiss">
+      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <line x1="18" y1="6" x2="6" y2="18" />
+        <line x1="6" y1="6" x2="18" y2="18" />
+      </svg>
+    </button>
+
+    <div class="toast-progress" *ngIf="!t.sticky">
+      <div class="toast-progress-bar" [style.width.%]="progressPct(t)"></div>
+    </div>
+  </div>
+</div>
+
+<div class="confirm-overlay" *ngIf="confirmDialog" (click)="confirmNo()">
+  <div class="confirm-dialog" (click)="$event.stopPropagation()">
+    <div class="confirm-header">
+      <h5>{{ confirmDialog.title }}</h5>
+    </div>
+    <div class="confirm-body">
+      <p>{{ confirmDialog.message }}</p>
+    </div>
+    <div class="confirm-footer">
+      <button class="confirm-cancel" (click)="confirmNo()">{{ confirmDialog.cancelLabel }}</button>
+      <button class="confirm-ok"
+              [class.danger]="confirmDialog.confirmStyle === 'danger'"
+              (click)="confirmYes()">
+        {{ confirmDialog.confirmLabel }}
+      </button>
+    </div>
+  </div>
+</div>

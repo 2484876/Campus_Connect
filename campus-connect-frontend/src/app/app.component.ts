@@ -7,14 +7,16 @@ import { WebSocketService } from './services/websocket.service';
 import { MessageStateService } from './services/message-state.service';
 import { ThemeService } from './services/theme.service';
 import { Subscription } from 'rxjs';
-
+import { ToastContainerComponent } from './components/toast/toast-container.component';
+import { GlobalAlertOverride } from './services/global-alert-override.service';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, CommonModule, NavbarComponent],
+  imports: [RouterOutlet, CommonModule, NavbarComponent, ToastContainerComponent],
   template: `
     <app-navbar *ngIf="auth.isLoggedIn()"></app-navbar>
     <router-outlet></router-outlet>
+    <app-toast-container></app-toast-container>
   `
 })
 export class AppComponent implements OnInit, OnDestroy {
@@ -24,8 +26,11 @@ export class AppComponent implements OnInit, OnDestroy {
     public auth: AuthService,
     private ws: WebSocketService,
     private msgState: MessageStateService,
-    private theme: ThemeService
-  ) { }
+    private theme: ThemeService,
+    private alertOverride: GlobalAlertOverride   
+  ) {
+    this.alertOverride.install();  
+  }
 
   ngOnInit(): void {
     this.theme.init();

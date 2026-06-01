@@ -58,6 +58,14 @@ export class SkillSearchComponent implements OnInit {
     });
   }
 
+  onBlur(): void {
+    // Delay so (mousedown) on autocomplete items can fire first
+    setTimeout(() => {
+      this.showAutocomplete = false;
+      this.cdr.detectChanges();
+    }, 200);
+  }
+
   pickSuggestion(s: SkillSuggestion): void {
     this.query = s.skill;
     this.showAutocomplete = false;

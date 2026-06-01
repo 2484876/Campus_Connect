@@ -1,215 +1,290 @@
-<div class="chat-layout" [class.has-selection]="selectedUserId" (click)="onChatAreaClick()">
+<div class="chat-page" (click)="closeContextMenu(); closeEmojiPicker()">
 
-  <div class="chat-sidebar">
-    <div class="sidebar-header">
-      <h5>Messaging</h5>
-    </div>
-    <div class="conversation-list">
-      <div class="conversation-item"
-           *ngFor="let c of conversations"
-           [class.active]="selectedUserId === c.userId"
-           (click)="selectConversation(c)">
-        <img [src]="c.userProfilePic || avatar(c.userName)" class="convo-avatar" loading="lazy">
-        <div class="convo-info">
-          <div class="convo-name">{{ c.userName }}</div>
-          <div class="convo-preview" [class.deleted-preview]="c.lastMessage === 'This message was deleted'">
-            <span *ngIf="c.lastMessage === 'This message was deleted'" class="deleted-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="#999" viewBox="0 0 16 16">
-                <path d="M6.5 1h3a.5.5 0 01.5.5v1H6v-1a.5.5 0 01.5-.5zM11 2.5v-1A1.5 1.5 0 009.5 0h-3A1.5 1.5 0 005 1.5v1H1.5a.5.5 0 000 1h.538l.853 10.66A2 2 0 004.885 16h6.23a2 2 0 001.994-1.84l.853-10.66h.538a.5.5 0 000-1H11z" />
-              </svg>
-            </span>
-            {{ c.lastMessage }}
-          </div>
-        </div>
-        <div class="convo-meta">
-          <span class="convo-time" *ngIf="c.lastMessageTime">{{ timeAgo(c.lastMessageTime) }}</span>
-          <span class="unread-badge" *ngIf="c.unreadCount && c.unreadCount > 0">{{ c.unreadCount }}</span>
-        </div>
+  <div class="convo-pane">
+    <div class="convo-head">
+      <div class="convo-head-top">
+        <h4>Messages</h4>
+        <button class="new-chat-btn" (click)="onNewChatClick()" title="New chat">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
       </div>
 
-      <div class="empty-sidebar" *ngIf="!loading && conversations.length === 0">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="#ccc" viewBox="0 0 16 16">
-          <path d="M16 8c0 3.866-3.582 7-8 7a9.06 9.06 0 01-2.347-.306c-.584.296-1.925.864-4.181 1.234-.2.032-.352-.176-.273-.362.354-.836.674-1.95.77-2.966C.744 11.37 0 9.76 0 8c0-3.866 3.582-7 8-7s8 3.134 8 7z" />
+      <div class="global-search">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="search-icon">
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
         </svg>
-        <p>No conversations yet</p>
-        <small>Connect with people to start chatting</small>
+        <input type="text" [(ngModel)]="globalSearch" (input)="onGlobalSearch()" placeholder="Search messages...">
+        <button *ngIf="globalSearch" class="search-clear" (click)="clearGlobalSearch()">
+          <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+        </button>
+      </div>
+
+      <div class="tabs" *ngIf="!searchMode">
+        <button [class.active]="activeTab === 'ALL'" (click)="setTab('ALL')">All</button>
+        <button [class.active]="activeTab === 'UNREAD'" (click)="setTab('UNREAD')">Unread</button>
+        <button [class.active]="activeTab === 'GROUPS'" (click)="setTab('GROUPS')">Groups</button>
+      </div>
+
+      <div class="convo-filter" *ngIf="!searchMode">
+        <input type="text" [(ngModel)]="convoSearch" (input)="onConvoSearch()" placeholder="Filter conversations...">
+      </div>
+    </div>
+
+    <div class="convo-list" *ngIf="!searchMode">
+      <div *ngIf="loading" class="loading-row">Loading...</div>
+      <div *ngIf="!loading && filteredConvos.length === 0" class="empty-row">
+        No conversations.
+      </div>
+
+      <div *ngFor="let c of filteredConvos; trackBy: trackByConvo" class="convo-row"
+           [class.active]="(c.kind === 'DM' && c.userId === selectedUserId) || (c.kind === 'ROOM' && c.roomId === selectedRoomId)"
+           (click)="openConvo(c)">
+        <div class="convo-avatar-wrap">
+          <img *ngIf="c.kind === 'DM'" [src]="c.userProfilePic || avatar(c.userName)" class="convo-avatar">
+          <div *ngIf="c.kind === 'ROOM' && !c.userProfilePic" class="convo-avatar group-fallback">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+          </div>
+          <img *ngIf="c.kind === 'ROOM' && c.userProfilePic" [src]="c.userProfilePic" class="convo-avatar">
+          <app-presence-dot *ngIf="c.kind === 'DM'" [status]="presenceFor(c)"></app-presence-dot>
+        </div>
+
+        <div class="convo-info">
+          <div class="convo-top">
+            <span class="convo-name">{{ c.userName }}</span>
+            <span class="convo-time">{{ formatTime(c.lastMessageTime) }}</span>
+          </div>
+          <div class="convo-bottom">
+            <span class="convo-preview">
+              <svg *ngIf="c.kind === 'ROOM'" class="group-icon" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
+              {{ c.lastMessage }}
+            </span>
+            <span class="unread-badge" *ngIf="c.unreadCount > 0">{{ c.unreadCount }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="convo-list" *ngIf="searchMode">
+      <div class="search-header">Search results ({{ searchResults.length }})</div>
+      <div *ngIf="searchResults.length === 0" class="empty-row">No matches.</div>
+      <div *ngFor="let m of searchResults" class="search-result-row"
+           (click)="m.chatRoomId ? openRoom(m.chatRoomId) : openDM(m.senderId === currentUserId ? m.receiverId! : m.senderId)">
+        <img [src]="m.senderProfilePic || avatar(m.senderName)" class="search-result-avatar">
+        <div class="search-result-info">
+          <div class="search-result-name">{{ m.senderName }}</div>
+          <div class="search-result-text">{{ m.content }}</div>
+          <div class="search-result-meta">{{ formatDay(m.createdAt) }} · {{ formatTime(m.createdAt) }}</div>
+        </div>
       </div>
     </div>
   </div>
 
-  <div class="chat-main">
+  <div class="chat-pane" *ngIf="selectedKind; else noChat">
 
-    <div class="chat-empty" *ngIf="!selectedUserId">
-      <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" fill="#ddd" viewBox="0 0 16 16">
-        <path d="M16 8c0 3.866-3.582 7-8 7a9.06 9.06 0 01-2.347-.306c-.584.296-1.925.864-4.181 1.234-.2.032-.352-.176-.273-.362.354-.836.674-1.95.77-2.966C.744 11.37 0 9.76 0 8c0-3.866 3.582-7 8-7s8 3.134 8 7z" />
-      </svg>
-      <h5>Your messages</h5>
-      <p>Select a conversation to start chatting</p>
-    </div>
-
-    <ng-container *ngIf="selectedUserId">
-
-      <div class="chat-header">
-        <button class="back-btn" (click)="goBack()">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#666" viewBox="0 0 16 16">
-            <path fill-rule="evenodd" d="M15 8a.5.5 0 00-.5-.5H2.707l3.147-3.146a.5.5 0 10-.708-.708l-4 4a.5.5 0 000 .708l4 4a.5.5 0 00.708-.708L2.707 8.5H14.5A.5.5 0 0015 8z" />
-          </svg>
-        </button>
-        <img [src]="selectedUserPic" class="header-avatar">
-        <div class="header-info">
-          <div class="chat-header-name">{{ selectedUserName }}</div>
-          <div class="typing-indicator" *ngIf="isOtherTyping">typing...</div>
+    <div class="chat-head">
+      <div class="chat-head-info">
+        <div class="head-avatar-wrap">
+          <img [src]="selectedPic" class="head-avatar">
+          <app-presence-dot *ngIf="selectedKind === 'DM'" [status]="selectedPresence"></app-presence-dot>
+        </div>
+        <div class="head-name-block">
+          <div class="head-name">{{ selectedName }}</div>
+          <div class="head-meta" *ngIf="selectedKind === 'DM'">
+            {{ selectedPresence === 'ONLINE' ? 'Online' : selectedPresence === 'AWAY' ? 'Away' : 'Offline' }}
+          </div>
+          <div class="head-meta" *ngIf="selectedKind === 'ROOM' && selectedRoom">
+            {{ selectedRoom.memberCount }} members
+          </div>
         </div>
       </div>
+      <button *ngIf="selectedKind === 'ROOM'" class="info-btn" (click)="showRoomInfo = true" title="Group info">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>
+      </button>
+    </div>
 
-      <div class="messages-area">
-        <div class="messages-container" #msgContainer (scroll)="onScroll()">
-          <div class="message-wrapper"
-               *ngFor="let msg of messages; trackBy: trackMsg"
-               [id]="'msg-' + msg.id"
-               [class.mine]="isMyMessage(msg)"
-               [class.theirs]="!isMyMessage(msg)"
-               [class.has-reactions]="hasReactions(msg)"
-               (contextmenu)="onRightClick($event, msg)">
-            <img *ngIf="!isMyMessage(msg)" [src]="selectedUserPic" class="msg-avatar" loading="lazy">
-            <div class="msg-col">
-              <div class="message-bubble" [class.deleted-bubble]="msg.deleted">
+    <div class="pinned-bar" *ngIf="pinnedMessages.length > 0">
+      <div class="pinned-head" (click)="pinnedExpanded = !pinnedExpanded">
+        <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M9.828.722a.5.5 0 0 1 .354.146l4.95 4.95a.5.5 0 0 1 0 .707c-.48.48-1.072.588-1.503.588-.177 0-.335-.018-.46-.039l-3.134 3.134a5.927 5.927 0 0 1 .16 1.013c.046.702-.032 1.687-.72 2.375a.5.5 0 0 1-.707 0l-2.829-2.828-3.182 3.182c-.195.195-1.219.902-1.414.707-.195-.195.512-1.22.707-1.414l3.182-3.182-2.828-2.829a.5.5 0 0 1 0-.707c.688-.688 1.673-.767 2.375-.72.36.024.7.082 1.013.16l3.134-3.133a2.772 2.772 0 0 1-.04-.461c0-.43.108-1.022.589-1.503a.5.5 0 0 1 .353-.146z" /></svg>
+        <span>{{ pinnedMessages.length }} pinned message{{ pinnedMessages.length > 1 ? 's' : '' }}</span>
+        <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" [class.rotated]="pinnedExpanded" class="caret"><polyline points="6 9 12 15 18 9" /></svg>
+      </div>
+      <div class="pinned-list" *ngIf="pinnedExpanded">
+        <div class="pinned-item" *ngFor="let p of pinnedMessages" (click)="jumpToPinned(p)">
+          <div class="pinned-sender">{{ p.senderName }}</div>
+          <div class="pinned-text">{{ p.content }}</div>
+        </div>
+      </div>
+    </div>
 
-                <div class="reply-quote" *ngIf="msg.replyToId && !msg.deleted" (click)="scrollToMessage(msg.replyToId)">
-                  <div class="reply-author">{{ getReplyName(msg) }}</div>
-                  <div class="reply-text">{{ msg.replyToContent }}</div>
-                </div>
+    <div class="msg-area" #msgContainer (scroll)="onMsgScroll()">
+      <div *ngFor="let m of messages; trackBy: trackByMsg; let i = index">
 
-                <p *ngIf="!msg.deleted">{{ msg.content }}</p>
-                <p *ngIf="msg.deleted" class="deleted-text">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 16 16">
-                    <path d="M11 1.5v1h3.5a.5.5 0 010 1h-.538l-.853 10.66A2 2 0 0111.115 16h-6.23a2 2 0 01-1.994-1.84L2.038 3.5H1.5a.5.5 0 010-1H5v-1A1.5 1.5 0 016.5 0h3A1.5 1.5 0 0111 1.5z" />
-                  </svg>
-                  <span *ngIf="msg.deletedBy === currentUserId">You deleted this message</span>
-                  <span *ngIf="msg.deletedBy !== currentUserId">This message was deleted</span>
-                </p>
+        <div class="date-sep" *ngIf="shouldShowDateSep(i)">
+          <span>{{ formatDay(m.createdAt) }}</span>
+        </div>
 
-                <div class="message-footer">
-                  <span class="message-time">{{ timeAgo(msg.createdAt) }}</span>
-                  <span class="read-receipt" *ngIf="isMyMessage(msg) && !msg.deleted">
-                    <svg *ngIf="!msg.readStatus" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="tick-single">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                    <svg *ngIf="msg.readStatus" xmlns="http://www.w3.org/2000/svg" width="16" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="tick-double">
-                      <polyline points="17 6 6 17 1 12" />
-                      <polyline points="23 6 12 17 7 12" />
-                    </svg>
-                  </span>
-                </div>
+        <div class="msg-row" [class.mine]="m.senderId === currentUserId" [id]="'msg-' + m.id">
 
-                <button class="react-trigger" *ngIf="!msg.deleted" (click)="toggleEmojiPicker(msg.id, $event)">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
-                    <path d="M8 15A7 7 0 118 1a7 7 0 010 14zm0 1A8 8 0 108 0a8 8 0 000 16z" />
-                    <path d="M4.285 9.567a.5.5 0 01.683.183A3.498 3.498 0 008 11.5a3.498 3.498 0 003.032-1.75.5.5 0 11.866.5A4.498 4.498 0 018 12.5a4.498 4.498 0 01-3.898-2.25.5.5 0 01.183-.683zM7 6.5C7 7.328 6.552 8 6 8s-1-.672-1-1.5S5.448 5 6 5s1 .672 1 1.5zm4 0c0 .828-.448 1.5-1 1.5s-1-.672-1-1.5S9.448 5 10 5s1 .672 1 1.5z" />
-                  </svg>
-                </button>
+          <img *ngIf="m.senderId !== currentUserId && selectedKind === 'ROOM'" [src]="m.senderProfilePic || avatar(m.senderName)" class="msg-sender-avatar">
 
-                <div class="emoji-picker"
-                     *ngIf="emojiPickerMsgId === msg.id"
-                     [style.left.px]="emojiPickerX"
-                     [style.top.px]="emojiPickerY"
-                     (click)="$event.stopPropagation()">
-                  <button *ngFor="let emoji of quickEmojis"
-                          class="emoji-option"
-                          (click)="reactToMessage(msg.id, emoji, $event)">
-                    {{ emoji }}
-                  </button>
+          <div class="msg-bubble-wrap">
+
+            <div class="msg-sender-name" *ngIf="m.senderId !== currentUserId && selectedKind === 'ROOM'">
+              {{ m.senderName }}
+            </div>
+
+            <div class="msg-bubble" [class.deleted]="m.deleted" [class.has-attach]="m.attachments && m.attachments.length > 0"
+                 (contextmenu)="onMessageContextMenu($event, m)">
+
+              <div class="reply-preview" *ngIf="m.replyToId">
+                <div class="reply-sender">{{ m.replyToSenderName }}</div>
+                <div class="reply-text">{{ m.replyToContent }}</div>
+              </div>
+
+              <div *ngIf="m.attachments && m.attachments.length > 0" class="attachments">
+                <div *ngFor="let a of m.attachments" class="attach-item">
+                  <a *ngIf="a.attachmentType === 'IMAGE'" [href]="a.url" target="_blank">
+                    <img [src]="a.url" class="attach-image">
+                  </a>
+                  <div *ngIf="a.attachmentType === 'FILE'" class="attach-file">
+                    <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" /><polyline points="13 2 13 9 20 9" /></svg>
+                    <a [href]="a.url" target="_blank" class="attach-file-name">{{ a.fileName }}</a>
+                    <span class="attach-file-size">{{ formatFileSize(a.fileSize) }}</span>
+                  </div>
+                  <div *ngIf="a.attachmentType === 'VOICE'" class="attach-voice">
+                    <audio controls [src]="a.url" preload="metadata"></audio>
+                    <span class="voice-duration">{{ formatDuration(a.durationSeconds) }}</span>
+                  </div>
                 </div>
               </div>
 
-              <div class="reaction-badges" *ngIf="hasReactions(msg)">
-                <button *ngFor="let group of getGroupedReactions(msg.id)"
-                        class="reaction-badge"
-                        [class.my-reaction]="group.reactedByMe"
-                        (click)="toggleExistingReaction(msg.id, group.emoji, $event)"
-                        [title]="group.users.join(', ')">
-                  <span class="reaction-emoji">{{ group.emoji }}</span>
-                  <span class="reaction-count">{{ group.count }}</span>
-                </button>
+              <div *ngIf="editingMsgId !== m.id" class="msg-text">{{ m.content }}</div>
+              <div *ngIf="editingMsgId === m.id" class="edit-area">
+                <input class="edit-input" [(ngModel)]="editText" (keydown.enter)="saveEdit()" (keydown.escape)="cancelEdit()">
+                <button class="edit-save" (click)="saveEdit()">Save</button>
+                <button class="edit-cancel" (click)="cancelEdit()">Cancel</button>
               </div>
+
+              <div class="msg-meta">
+                <span *ngIf="m.edited" class="edited-tag">edited</span>
+                <span *ngIf="m.pinned" class="pinned-tag" title="Pinned">📌</span>
+                <span class="msg-time">{{ formatTime(m.createdAt) }}</span>
+                <span *ngIf="m.senderId === currentUserId && selectedKind === 'DM'" class="msg-read" [class.read]="m.readStatus">
+                  {{ m.readStatus ? '✓✓' : '✓' }}
+                </span>
+              </div>
+
+              <button class="quick-react-btn" (click)="openEmojiPicker($event, m)" title="React">
+                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><line x1="9" y1="9" x2="9.01" y2="9" /><line x1="15" y1="9" x2="15.01" y2="9" /></svg>
+              </button>
+            </div>
+
+            <div class="reactions" *ngIf="groupedReactions(m).length > 0">
+              <button *ngFor="let g of groupedReactions(m)" class="reaction-chip"
+                      [class.mine]="g.reactedByMe" [title]="g.users.join(', ')"
+                      (click)="toggleReactionGroup(m, g)">
+                {{ g.emoji }} {{ g.count }}
+              </button>
             </div>
           </div>
-
-          <div class="no-messages" *ngIf="messages.length === 0">
-            <p>No messages yet. Say hello!</p>
-          </div>
         </div>
-
-        <button class="new-msg-btn" *ngIf="showNewMsgBtn" (click)="scrollToNew()">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="white" viewBox="0 0 16 16">
-            <path fill-rule="evenodd" d="M8 1a.5.5 0 01.5.5v11.793l3.146-3.147a.5.5 0 01.708.708l-4 4a.5.5 0 01-.708 0l-4-4a.5.5 0 01.708-.708L7.5 13.293V1.5A.5.5 0 018 1z" />
-          </svg>
-          New message
-        </button>
       </div>
 
-      <div class="typing-bar" *ngIf="isOtherTyping">
-        <div class="typing-dots">
-          <span></span><span></span><span></span>
-        </div>
+      <div class="typing-indicator" *ngIf="isOtherTyping">
         <span>{{ typingUserName }} is typing</span>
+        <span class="dots"><span></span><span></span><span></span></span>
       </div>
+    </div>
 
-      <div class="reply-bar" *ngIf="replyingTo">
-        <div class="reply-bar-content">
-          <div class="reply-bar-author">{{ replyingTo.senderId === currentUserId ? 'You' : selectedUserName }}</div>
-          <div class="reply-bar-text">{{ replyingTo.content }}</div>
+    <button class="new-msg-btn" *ngIf="showNewMsgBtn" (click)="scrollToBottom()">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9" /></svg>
+      New messages
+    </button>
+
+    <div class="reply-bar" *ngIf="replyingTo">
+      <div class="reply-bar-info">
+        <div class="reply-bar-sender">Replying to {{ replyingTo.senderName }}</div>
+        <div class="reply-bar-text">{{ replyingTo.content }}</div>
+      </div>
+      <button class="reply-bar-x" (click)="cancelReply()">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+      </button>
+    </div>
+
+    <div class="pending-attachments" *ngIf="pendingAttachments.length > 0">
+      <div class="pending-item" *ngFor="let a of pendingAttachments; let i = index">
+        <img *ngIf="a.attachmentType === 'IMAGE'" [src]="a.url" class="pending-thumb">
+        <div *ngIf="a.attachmentType === 'FILE'" class="pending-file">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" /></svg>
+          <span>{{ a.fileName }}</span>
         </div>
-        <button class="reply-bar-close" (click)="cancelReply()">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#666" viewBox="0 0 16 16">
-            <path d="M4.646 4.646a.5.5 0 01.708 0L8 7.293l2.646-2.647a.5.5 0 01.708.708L8.707 8l2.647 2.646a.5.5 0 01-.708.708L8 8.707l-2.646 2.647a.5.5 0 01-.708-.708L7.293 8 4.646 5.354a.5.5 0 010-.708z" />
-          </svg>
+        <button class="pending-x" (click)="removePendingAttachment(i)">
+          <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
         </button>
       </div>
+    </div>
 
-      <div class="chat-input">
-        <input type="text"
-               class="form-control"
-               #msgInput
-               [(ngModel)]="newMessage"
-               placeholder="Write a message..."
-               (keydown.enter)="send()"
-               (input)="onInputChange()">
-        <button class="btn btn-primary send-btn" (click)="send()" [disabled]="!newMessage.trim()">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="white" viewBox="0 0 16 16">
-            <path d="M15.854.146a.5.5 0 01.11.54l-5.819 14.547a.75.75 0 01-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 01.124-1.33L15.314.037a.5.5 0 01.54.11z" />
-          </svg>
-        </button>
-      </div>
-    </ng-container>
+    <div class="composer">
+      <input type="file" #fileInput hidden (change)="onFilePicked($event)">
+      <input type="file" #imageInput hidden accept="image/*" (change)="onImagePicked($event)">
+
+      <button class="composer-btn" (click)="onAttachImageClick()" title="Image" [disabled]="uploadingFile">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
+      </button>
+
+      <button class="composer-btn" (click)="onAttachFileClick()" title="File" [disabled]="uploadingFile">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
+      </button>
+
+      <app-voice-recorder (recorded)="onVoiceRecorded($event)"></app-voice-recorder>
+
+      <input #msgInput class="msg-input" type="text" [(ngModel)]="newMessage"
+             (keydown)="onInputKeydown($event)"
+             placeholder="Type a message..." [disabled]="uploadingFile">
+
+      <button class="send-btn" (click)="sendMessage()"
+              [disabled]="uploadingFile || (!newMessage.trim() && pendingAttachments.length === 0)">
+        <svg width="15" height="15" fill="currentColor" viewBox="0 0 16 16"><path d="M15.854.146a.5.5 0 01.11.54l-5.819 14.547a.75.75 0 01-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 01.124-1.33L15.314.037a.5.5 0 01.54.11z" /></svg>
+      </button>
+    </div>
   </div>
 
-  <div class="context-menu"
-       *ngIf="contextMenuMsgId"
-       [style.left.px]="contextMenuX"
-       [style.top.px]="contextMenuY"
-       (click)="$event.stopPropagation()">
+  <ng-template #noChat>
+    <div class="no-chat">
+      <svg width="60" height="60" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+      <p>Select a conversation or start a new one</p>
+    </div>
+  </ng-template>
 
-    <button *ngIf="!contextMenuIsDeleted" (click)="replyToContextMsg()" class="ctx-reply">
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="#333" viewBox="0 0 16 16">
-        <path d="M6.598 5.013a.144.144 0 01.202.134V6.3a.5.5 0 00.5.5c.667 0 2.013.005 3.3.822.984.624 1.99 1.76 2.595 3.876-1.02-1.683-2.39-2.51-3.6-2.856-.576-.164-1.14-.248-1.795-.264a.5.5 0 00-.5.5v1.146c0 .109-.129.17-.202.098L3.2 6.228a.144.144 0 010-.207l3.398-3.008z" />
-      </svg>
-      Reply
-    </button>
-
-    <button *ngIf="contextMenuCanDeleteForAll" (click)="deleteForEveryone(contextMenuMsgId!)" class="ctx-delete">
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="#d11a2a" viewBox="0 0 16 16">
-        <path d="M6.5 1h3a.5.5 0 01.5.5v1H6v-1a.5.5 0 01.5-.5zM11 2.5v-1A1.5 1.5 0 009.5 0h-3A1.5 1.5 0 005 1.5v1H1.5a.5.5 0 000 1h.538l.853 10.66A2 2 0 004.885 16h6.23a2 2 0 001.994-1.84l.853-10.66h.538a.5.5 0 000-1H11z" />
-      </svg>
-      Delete for everyone
-    </button>
-
-    <button (click)="deleteForMe(contextMenuMsgId!)" class="ctx-delete-me">
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="#666" viewBox="0 0 16 16">
-        <path d="M6.5 1h3a.5.5 0 01.5.5v1H6v-1a.5.5 0 01.5-.5zM11 2.5v-1A1.5 1.5 0 009.5 0h-3A1.5 1.5 0 005 1.5v1H1.5a.5.5 0 000 1h.538l.853 10.66A2 2 0 004.885 16h6.23a2 2 0 001.994-1.84l.853-10.66h.538a.5.5 0 000-1H11z" />
-      </svg>
-      Delete for me
-    </button>
+  <div *ngIf="contextMenuMsgId" class="context-menu" [style.left.px]="contextMenuX" [style.top.px]="contextMenuY" (click)="$event.stopPropagation()">
+    <button *ngIf="!contextMenuIsDeleted" (click)="replyAction()">Reply</button>
+    <button *ngIf="contextMenuCanEdit" (click)="editAction()">Edit</button>
+    <button *ngIf="!contextMenuIsPinned && !contextMenuIsDeleted" (click)="pinAction()">Pin</button>
+    <button *ngIf="contextMenuIsPinned" (click)="unpinAction()">Unpin</button>
+    <button (click)="deleteForMe()">Delete for me</button>
+    <button *ngIf="contextMenuCanDeleteForAll" class="danger" (click)="deleteForEveryone()">Delete for everyone</button>
   </div>
+
+  <div *ngIf="emojiPickerMsgId" class="emoji-picker" [style.left.px]="emojiPickerX" [style.top.px]="emojiPickerY" (click)="$event.stopPropagation()">
+    <button *ngFor="let e of quickEmojis" class="emoji-btn" (click)="reactToMsg(e)">{{ e }}</button>
+  </div>
+
+  <app-new-chat-dialog *ngIf="showNewChatDialog"
+                       (close)="showNewChatDialog = false"
+                       (dmCreated)="onDMCreated($event)"
+                       (groupCreated)="onGroupCreated($event)">
+  </app-new-chat-dialog>
+
+  <app-room-info-dialog *ngIf="showRoomInfo && selectedRoomId"
+                        [roomId]="selectedRoomId"
+                        [currentUserId]="currentUserId"
+                        (close)="showRoomInfo = false"
+                        (updated)="onRoomInfoUpdated($event)"
+                        (left)="onRoomLeft($event)">
+  </app-room-info-dialog>
 
 </div>

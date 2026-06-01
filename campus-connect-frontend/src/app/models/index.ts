@@ -145,30 +145,79 @@ export interface MessageDTO {
   senderId: number;
   senderName: string;
   senderProfilePic: string;
-  receiverId: number;
+  receiverId: number | null;
+  chatRoomId: number | null;
   content: string;
+  messageType: string;
   readStatus: boolean;
   readAt: string | null;
   deleted: boolean;
   deletedBy: number | null;
   deleteType: string | null;
   hiddenFor: number | null;
+  edited: boolean;
+  editedAt: string | null;
   replyToId: number | null;
   replyToContent: string | null;
   replyToSenderName: string | null;
   reactions: ReactionDTO[];
+  attachments: AttachmentDTO[];
+  pinned: boolean;
   createdAt: string;
+  newComment?: string;
+  showComments?: boolean;
 }
-
 export interface ConversationDTO {
-  userId: number;
+  kind: 'DM' | 'ROOM';
+  userId: number | null;
+  roomId: number | null;
   userName: string;
   userProfilePic: string;
   lastMessage: string;
   lastMessageTime: string;
   unreadCount: number;
+  presence?: string;
+  memberCount?: number;
+}
+export interface AttachmentDTO {
+  id?: number;
+  attachmentType: 'IMAGE' | 'FILE' | 'VOICE';
+  url: string;
+  fileName?: string;
+  fileSize?: number;
+  durationSeconds?: number;
 }
 
+export interface ChatRoomMemberDTO {
+  userId: number;
+  name: string;
+  profilePicUrl: string;
+  position: string;
+  role: 'ADMIN' | 'MEMBER';
+  presence?: string;
+}
+
+export interface ChatRoomDTO {
+  id: number;
+  name: string;
+  avatarUrl: string | null;
+  createdById: number;
+  createdByName: string;
+  createdAt: string;
+  lastActivity: string;
+  lastMessagePreview: string;
+  lastMessageAt: string;
+  unreadCount: number;
+  memberCount: number;
+  myRole: 'ADMIN' | 'MEMBER';
+  members?: ChatRoomMemberDTO[];
+}
+
+export interface PresenceDTO {
+  userId: number;
+  status: 'ONLINE' | 'AWAY' | 'OFFLINE';
+  lastSeen: string | null;
+}
 export interface ReadReceiptDTO {
   readByUserId: number;
   senderUserId: number;

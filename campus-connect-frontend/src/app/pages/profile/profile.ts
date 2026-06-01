@@ -1,12 +1,13 @@
-import { Component, OnInit, ChangeDetectorRef, HostListener } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, HostListener, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterModule, Router } from '@angular/router';
 import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
-import { UserDTO, PostDTO, ExperienceDTO, ConnectionDTO } from '../../models';
+import { UserDTO, PostDTO, ExperienceDTO, ConnectionDTO, KudosDTO } from '../../models';
 import { EndorsementsWidgetComponent } from '../../components/endorsements-widget/endorsements-widget.component';
 import { ConnectRequestDialogComponent } from '../../components/connect-request-dialog/connect-request-dialog.component';
+import { KudosDialogComponent } from '../../components/kudos-dialog/kudos-dialog.component';
 import { HashtagLinksPipe } from '../../pipes/hashtag-links.pipe';
 
 @Component({
@@ -14,12 +15,13 @@ import { HashtagLinksPipe } from '../../pipes/hashtag-links.pipe';
   standalone: true,
   imports: [
     CommonModule, FormsModule, RouterModule,
-    EndorsementsWidgetComponent, ConnectRequestDialogComponent, HashtagLinksPipe
+    EndorsementsWidgetComponent, ConnectRequestDialogComponent,
+    KudosDialogComponent, HashtagLinksPipe
   ],
   templateUrl: './profile.html',
   styleUrls: ['./profile.scss']
 })
-export class ProfileComponent implements OnInit {
+export class ProfileComponent implements OnInit, OnDestroy {
   user: UserDTO | null = null;
   posts: PostDTO[] = [];
   isOwnProfile = false;
@@ -41,6 +43,16 @@ export class ProfileComponent implements OnInit {
   isConnected = false;
   showConnectDialog = false;
 
+  kudosReceived: KudosDTO[] = [];
+  kudosLoading = false;
+  showKudosDialog = false;
+
+  kudosViewerOpen = false;
+  activeKudosIdx = 0;
+  kudosProgress = 0;
+  private kudosTimer: any = null;
+  private kudosDurationMs = 6000;
+
   roleLabels: any = {
     PROGRAMMER_ANALYST_TRAINEE: 'Programmer Analyst Trainee',
     PROGRAMMER_ANALYST: 'Programmer Analyst',
@@ -55,6 +67,17 @@ export class ProfileComponent implements OnInit {
     VP: 'Vice President',
     SVP: 'Senior Vice President',
     ADMIN: 'Admin'
+  };
+
+  kudosCategoryMeta: any = {
+    TEAMWORK: { emoji: '🤝', label: 'Teamwork' },
+    INNOVATION: { emoji: '💡', label: 'Innovation' },
+    LEADERSHIP: { emoji: '⭐', label: 'Leadership' },
+    EXCELLENCE: { emoji: '🏆', label: 'Excellence' },
+    HELPFUL: { emoji: '🙌', label: 'Helpful' },
+    INTEGRITY: { emoji: '🛡️', label: 'Integrity' },
+    MENTORSHIP: { emoji: '🎓', label: 'Mentorship' },
+    IMPACT: { emoji: '🚀', label: 'Impact' }
   };
 
   constructor(
@@ -79,6 +102,14 @@ export class ProfileComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
+  @HostListener('document:keydown', ['$event'])
+  onKey(event: KeyboardEvent): void {
+    if (!this.kudosViewerOpen) return;
+    if (event.key === 'Escape') this.closeKudosViewer();
+    else if (event.key === 'ArrowRight') this.nextKudos();
+    else if (event.key === 'ArrowLeft') this.prevKudos();
+  }
+
   ngOnInit(): void {
     this.route.params.subscribe(params => {
       const id = +params['id'];
@@ -86,6 +117,7 @@ export class ProfileComponent implements OnInit {
       this.loading = true;
       this.mutualCount = 0;
       this.isConnected = false;
+      this.kudosReceived = [];
 
       this.api.getUser(id).subscribe({
         next: (user) => {
@@ -112,7 +144,12 @@ export class ProfileComponent implements OnInit {
         error: () => { this.loading = false; this.cdr.detectChanges(); }
       });
       this.loadUserPosts(id);
+      this.loadKudos(id);
     });
+  }
+
+  ngOnDestroy(): void {
+    this.clearKudosTimer();
   }
 
   loadUserPosts(userId: number): void {
@@ -120,6 +157,75 @@ export class ProfileComponent implements OnInit {
       this.posts = res.content.filter(p => p.authorId === userId);
       this.cdr.detectChanges();
     });
+  }
+
+  loadKudos(userId: number): void {
+    this.kudosLoading = true;
+    this.api.getKudosReceived(userId).subscribe({
+      next: (res) => {
+        this.kudosReceived = res.content || [];
+        this.kudosLoading = false;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.kudosLoading = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  openKudosViewer(idx: number): void {
+    if (!this.kudosReceived.length) return;
+    this.activeKudosIdx = idx;
+    this.kudosViewerOpen = true;
+    this.cdr.detectChanges();
+    this.startKudosProgress();
+  }
+
+  closeKudosViewer(): void {
+    this.kudosViewerOpen = false;
+    this.clearKudosTimer();
+    this.cdr.detectChanges();
+  }
+
+  currentKudos(): KudosDTO | null {
+    return this.kudosReceived[this.activeKudosIdx] || null;
+  }
+
+  startKudosProgress(): void {
+    this.clearKudosTimer();
+    this.kudosProgress = 0;
+    const step = 50;
+    this.kudosTimer = setInterval(() => {
+      this.kudosProgress += (step / this.kudosDurationMs) * 100;
+      if (this.kudosProgress >= 100) {
+        this.nextKudos();
+      }
+      this.cdr.detectChanges();
+    }, step);
+  }
+
+  clearKudosTimer(): void {
+    if (this.kudosTimer) {
+      clearInterval(this.kudosTimer);
+      this.kudosTimer = null;
+    }
+  }
+
+  nextKudos(): void {
+    if (this.activeKudosIdx < this.kudosReceived.length - 1) {
+      this.activeKudosIdx++;
+      this.startKudosProgress();
+    } else {
+      this.closeKudosViewer();
+    }
+  }
+
+  prevKudos(): void {
+    if (this.activeKudosIdx > 0) {
+      this.activeKudosIdx--;
+      this.startKudosProgress();
+    }
   }
 
   onAvatarSelected(event: Event): void {
@@ -208,6 +314,29 @@ export class ProfileComponent implements OnInit {
     if (this.user) this.user.connectionStatus = 'PENDING';
     this.showConnectDialog = false;
     this.cdr.detectChanges();
+  }
+
+  openKudosDialog(): void {
+    if (!this.user) return;
+    this.showKudosDialog = true;
+    this.cdr.detectChanges();
+  }
+
+  closeKudosDialog(): void {
+    this.showKudosDialog = false;
+    this.cdr.detectChanges();
+  }
+
+  onKudosSent(): void {
+    if (this.user) this.loadKudos(this.user.id);
+  }
+
+  getKudosEmoji(category: string): string {
+    return this.kudosCategoryMeta[category]?.emoji || '👏';
+  }
+
+  getKudosLabel(category: string): string {
+    return this.kudosCategoryMeta[category]?.label || category;
   }
 
   message(): void {

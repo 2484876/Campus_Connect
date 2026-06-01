@@ -1,13 +1,17 @@
-import { Component, OnInit, OnDestroy, ViewChild, ElementRef, ChangeDetectorRef, ChangeDetectionStrategy, NgZone } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef, ChangeDetectorRef, ChangeDetectionStrategy, NgZone, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
 import { WebSocketService } from '../../services/websocket.service';
 import { MessageStateService } from '../../services/message-state.service';
-import { ConversationDTO, MessageDTO, ReadReceiptDTO, TypingDTO, MessageDeleteDTO, ReactionNotificationDTO, ReactionDTO } from '../../models';
+import { ConversationDTO, MessageDTO, ReadReceiptDTO, TypingDTO, MessageDeleteDTO, ReactionNotificationDTO, ReactionDTO, AttachmentDTO, ChatRoomDTO, PresenceDTO } from '../../models';
 import { Subscription } from 'rxjs';
+import { PresenceDotComponent } from './presence-dot.component';
+import { VoiceRecorderComponent } from './voice-recorder.component';
+import { NewChatDialogComponent } from './new-chat-dialog.component';
+import { RoomInfoDialogComponent } from './room-info-dialog.component';
 
 export interface GroupedReaction {
   emoji: string;
@@ -19,30 +23,48 @@ export interface GroupedReaction {
 @Component({
   selector: 'app-chat',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, PresenceDotComponent, VoiceRecorderComponent, NewChatDialogComponent, RoomInfoDialogComponent],
   templateUrl: './chat.html',
   styleUrls: ['./chat.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ChatComponent implements OnInit, OnDestroy {
+
   conversations: ConversationDTO[] = [];
+  filteredConvos: ConversationDTO[] = [];
+  activeTab: 'ALL' | 'UNREAD' | 'GROUPS' = 'ALL';
+  convoSearch = '';
+
   messages: MessageDTO[] = [];
+  pinnedMessages: MessageDTO[] = [];
+  pinnedExpanded = false;
+
+  selectedKind: 'DM' | 'ROOM' | null = null;
   selectedUserId: number | null = null;
-  selectedUserName = '';
-  selectedUserPic = '';
+  selectedRoomId: number | null = null;
+  selectedName = '';
+  selectedPic = '';
+  selectedPresence: string = 'OFFLINE';
+  selectedRoom: ChatRoomDTO | null = null;
+
   newMessage = '';
   currentUserId: number;
   loading = true;
   showNewMsgBtn = false;
   typingUserName = '';
   isOtherTyping = false;
+
   contextMenuMsgId: number | null = null;
   contextMenuX = 0;
   contextMenuY = 0;
   contextMenuIsMine = false;
   contextMenuCanDeleteForAll = false;
+  contextMenuCanEdit = false;
   contextMenuIsDeleted = false;
+  contextMenuIsPinned = false;
   replyingTo: MessageDTO | null = null;
+  editingMsgId: number | null = null;
+  editText = '';
 
   emojiPickerMsgId: number | null = null;
   quickEmojis: string[] = ['👍', '❤️', '😂', '😮', '😢', '🎉'];
@@ -50,15 +72,27 @@ export class ChatComponent implements OnInit, OnDestroy {
   emojiPickerX = 0;
   emojiPickerY = 0;
 
+  pendingAttachments: AttachmentDTO[] = [];
+  uploadingFile = false;
+
+  searchResults: MessageDTO[] = [];
+  searchMode = false;
+  globalSearch = '';
+
+  showNewChatDialog = false;
+  showRoomInfo = false;
+
+  presenceMap = new Map<number, string>();
+
   private subs: Subscription[] = [];
   private isNearBottom = true;
   private typingStopTimeout: any = null;
-  private typingReceiverTimeout: any = null;
-  private typingInterval: any = null;
-  private isSendingTyping = false;
+  private heartbeatTimer: any = null;
 
   @ViewChild('msgContainer') private msgContainer!: ElementRef<HTMLDivElement>;
   @ViewChild('msgInput') private msgInput!: ElementRef<HTMLInputElement>;
+  @ViewChild('fileInput') private fileInput!: ElementRef<HTMLInputElement>;
+  @ViewChild('imageInput') private imageInput!: ElementRef<HTMLInputElement>;
 
   constructor(
     private api: ApiService,
@@ -66,6 +100,7 @@ export class ChatComponent implements OnInit, OnDestroy {
     private ws: WebSocketService,
     private msgState: MessageStateService,
     private route: ActivatedRoute,
+    private router: Router,
     private cdr: ChangeDetectorRef,
     private zone: NgZone
   ) {
@@ -73,171 +108,377 @@ export class ChatComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.api.getConversations().subscribe(convos => {
-      this.conversations = convos;
-      this.loading = false;
-      this.cdr.markForCheck();
-    });
+    this.loadConversations();
+    this.startPresenceHeartbeat();
 
     this.subs.push(
       this.route.params.subscribe(params => {
         if (params['userId']) {
           const uid = +params['userId'];
-          this.openChat(uid);
-          this.api.getUser(uid).subscribe(u => {
-            this.selectedUserName = u.name;
-            this.selectedUserPic = u.profilePicUrl || this.avatar(u.name);
-            this.cdr.markForCheck();
-          });
+          this.openDM(uid);
+        } else if (params['roomId']) {
+          const rid = +params['roomId'];
+          this.openRoom(rid);
         }
       }),
       this.ws.newMessage$.subscribe(msg => this.handleIncoming(msg)),
-      this.ws.readReceipt$.subscribe(receipt => this.handleReadReceipt(receipt)),
-      this.ws.typing$.subscribe(typing => this.handleTyping(typing)),
-      this.ws.messageDeleted$.subscribe(del => this.handleMessageDeleted(del)),
-      this.ws.reaction$.subscribe(reaction => this.handleReactionNotification(reaction))
+      this.ws.roomMessage$.subscribe(msg => this.handleIncoming(msg)),
+      this.ws.readReceipt$.subscribe(r => this.handleReadReceipt(r)),
+      this.ws.typing$.subscribe(t => this.handleTyping(t)),
+      this.ws.roomTyping$.subscribe(t => this.handleTyping(t)),
+      this.ws.messageDeleted$.subscribe(d => this.handleMessageDeleted(d)),
+      this.ws.reaction$.subscribe(r => this.handleReactionNotification(r)),
+      this.ws.roomReaction$.subscribe(r => this.handleReactionNotification(r)),
+      this.ws.presence$.subscribe(p => this.handlePresence(p))
     );
   }
 
   ngOnDestroy(): void {
     this.subs.forEach(s => s.unsubscribe());
+    if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
+    if (this.selectedRoomId) this.ws.unsubscribeRoom(this.selectedRoomId);
+    this.api.setPresenceStatus('OFFLINE').subscribe();
     this.msgState.setActiveChat(null);
-    if (this.typingStopTimeout) clearTimeout(this.typingStopTimeout);
-    if (this.typingReceiverTimeout) clearTimeout(this.typingReceiverTimeout);
-    if (this.typingInterval) clearInterval(this.typingInterval);
   }
 
-  selectConversation(c: ConversationDTO): void {
-    this.selectedUserName = c.userName;
-    this.selectedUserPic = c.userProfilePic || this.avatar(c.userName);
-    this.openChat(c.userId);
-    this.markRead(c);
+  @HostListener('window:beforeunload')
+  beforeUnload(): void {
+    this.api.setPresenceStatus('OFFLINE').subscribe();
   }
 
-  send(): void {
-    const text = this.newMessage.trim();
-    if (!text || !this.selectedUserId) return;
-
-    this.stopTyping();
-    const targetUserId = this.selectedUserId;
-    const replyToId = this.replyingTo?.id || null;
-    this.newMessage = '';
-    this.replyingTo = null;
-    this.showNewMsgBtn = false;
-    this.cdr.markForCheck();
-
-    this.api.sendMessageWithReply(targetUserId, text, replyToId).subscribe(msg => {
-      this.updateConvoPreview(targetUserId, msg.content, msg.createdAt);
+  loadConversations(): void {
+    this.api.getConversations().subscribe(convos => {
+      this.conversations = convos;
+      this.applyConvoFilter();
+      this.loading = false;
+      const ids = convos.filter(c => c.kind === 'DM' && c.userId).map(c => c.userId!);
+      if (ids.length > 0) {
+        this.api.bulkPresence(ids).subscribe(list => {
+          list.forEach(p => this.presenceMap.set(p.userId, p.status));
+          this.cdr.markForCheck();
+        });
+      }
       this.cdr.markForCheck();
     });
   }
 
-  onInputChange(): void {
-    if (this.newMessage.trim() && this.selectedUserId) {
-      if (!this.isSendingTyping) {
-        this.isSendingTyping = true;
-        this.ws.sendTyping(this.selectedUserId, true);
-        this.typingInterval = setInterval(() => {
-          if (this.selectedUserId && this.isSendingTyping) {
-            this.ws.sendTyping(this.selectedUserId, true);
-          }
-        }, 1500);
-      }
-      if (this.typingStopTimeout) clearTimeout(this.typingStopTimeout);
-      this.typingStopTimeout = setTimeout(() => {
-        this.stopTyping();
-      }, 2500);
-    } else {
-      this.stopTyping();
-    }
+  startPresenceHeartbeat(): void {
+    this.api.presenceHeartbeat().subscribe();
+    this.heartbeatTimer = setInterval(() => {
+      this.api.presenceHeartbeat().subscribe();
+    }, 60000);
   }
 
-  replyToContextMsg(): void {
-    const msg = this.messages.find(m => m.id === this.contextMenuMsgId);
-    if (msg) this.setReply(msg);
+  setTab(tab: 'ALL' | 'UNREAD' | 'GROUPS'): void {
+    this.activeTab = tab;
+    this.applyConvoFilter();
   }
 
-  setReply(msg: MessageDTO): void {
-    if (msg.deleted) return;
-    this.replyingTo = msg;
-    this.closeContextMenu();
-    this.cdr.markForCheck();
-    setTimeout(() => this.msgInput?.nativeElement?.focus(), 50);
-  }
-
-  cancelReply(): void {
-    this.replyingTo = null;
+  applyConvoFilter(): void {
+    let list = [...this.conversations];
+    if (this.activeTab === 'UNREAD') list = list.filter(c => c.unreadCount > 0);
+    else if (this.activeTab === 'GROUPS') list = list.filter(c => c.kind === 'ROOM');
+    const q = this.convoSearch.toLowerCase().trim();
+    if (q) list = list.filter(c => c.userName.toLowerCase().includes(q));
+    this.filteredConvos = list;
     this.cdr.markForCheck();
   }
 
-  scrollToMessage(msgId: number | null): void {
-    if (!msgId) return;
-    const el = document.getElementById('msg-' + msgId);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      el.classList.add('highlight');
-      setTimeout(() => el.classList.remove('highlight'), 1500);
-    }
+  onConvoSearch(): void {
+    this.applyConvoFilter();
   }
 
-  goBack(): void {
-    this.stopTyping();
-    this.selectedUserId = null;
-    this.selectedUserName = '';
+  onGlobalSearch(): void {
+    const q = this.globalSearch.trim();
+    if (q.length < 2) {
+      this.searchMode = false;
+      this.searchResults = [];
+      this.cdr.markForCheck();
+      return;
+    }
+    this.searchMode = true;
+    this.api.searchMessages(q).subscribe(results => {
+      this.searchResults = results;
+      this.cdr.markForCheck();
+    });
+  }
+
+  clearGlobalSearch(): void {
+    this.globalSearch = '';
+    this.searchMode = false;
+    this.searchResults = [];
+    this.cdr.markForCheck();
+  }
+
+  openDM(userId: number): void {
+    if (this.selectedRoomId) this.ws.unsubscribeRoom(this.selectedRoomId);
+    this.selectedKind = 'DM';
+    this.selectedUserId = userId;
+    this.selectedRoomId = null;
+    this.selectedRoom = null;
     this.messages = [];
-    this.showNewMsgBtn = false;
-    this.isOtherTyping = false;
-    this.contextMenuMsgId = null;
-    this.replyingTo = null;
-    this.emojiPickerMsgId = null;
+    this.pinnedMessages = [];
+    this.groupedReactionsCache.clear();
+    this.msgState.setActiveChat(userId);
+
+    this.api.getUser(userId).subscribe(u => {
+      this.selectedName = u.name;
+      this.selectedPic = u.profilePicUrl || this.avatar(u.name);
+      this.cdr.markForCheck();
+    });
+
+    this.api.getPresence(userId).subscribe(p => {
+      this.selectedPresence = p.status;
+      this.presenceMap.set(userId, p.status);
+      this.cdr.markForCheck();
+    });
+
+    this.api.getConversation(userId, 0).subscribe((page: any) => {
+      this.messages = (page.content || []).slice().reverse();
+      this.cdr.markForCheck();
+      setTimeout(() => this.scrollToBottom(), 50);
+    });
+
+    this.api.markAsRead(userId).subscribe(() => {
+      const c = this.conversations.find(x => x.kind === 'DM' && x.userId === userId);
+      if (c) c.unreadCount = 0;
+      this.msgState.refreshCount();
+      this.applyConvoFilter();
+    });
+
+    this.api.getPinnedDm(userId).subscribe(pins => {
+      this.pinnedMessages = pins;
+      this.cdr.markForCheck();
+    });
+  }
+
+  openRoom(roomId: number): void {
+    if (this.selectedRoomId) this.ws.unsubscribeRoom(this.selectedRoomId);
+    this.selectedKind = 'ROOM';
+    this.selectedRoomId = roomId;
+    this.selectedUserId = null;
+    this.messages = [];
+    this.pinnedMessages = [];
     this.groupedReactionsCache.clear();
     this.msgState.setActiveChat(null);
-    this.cdr.markForCheck();
+
+    this.ws.subscribeRoom(roomId);
+
+    this.api.getRoom(roomId).subscribe(r => {
+      this.selectedRoom = r;
+      this.selectedName = r.name;
+      this.selectedPic = r.avatarUrl || this.groupAvatar(r.name);
+      this.cdr.markForCheck();
+    });
+
+    this.api.getRoomMessages(roomId, 0, 50).subscribe((page: any) => {
+      this.messages = (page.content || []).slice().reverse();
+      this.cdr.markForCheck();
+      setTimeout(() => this.scrollToBottom(), 50);
+    });
+
+    this.api.markRoomRead(roomId).subscribe(() => {
+      const c = this.conversations.find(x => x.kind === 'ROOM' && x.roomId === roomId);
+      if (c) c.unreadCount = 0;
+      this.msgState.refreshCount();
+      this.applyConvoFilter();
+    });
+
+    this.api.getPinnedRoom(roomId).subscribe(pins => {
+      this.pinnedMessages = pins;
+      this.cdr.markForCheck();
+    });
   }
 
-  onScroll(): void {
-    const el = this.msgContainer?.nativeElement;
-    if (!el) return;
-    this.isNearBottom = (el.scrollHeight - el.scrollTop - el.clientHeight) < 120;
-    if (this.isNearBottom && this.showNewMsgBtn) {
-      this.showNewMsgBtn = false;
-      this.cdr.markForCheck();
+  openConvo(c: ConversationDTO): void {
+    if (c.kind === 'DM' && c.userId) {
+      this.router.navigate(['/chat', c.userId]);
+    } else if (c.kind === 'ROOM' && c.roomId) {
+      this.router.navigate(['/chat/room', c.roomId]);
     }
   }
 
-  scrollToNew(): void {
-    this.showNewMsgBtn = false;
-    this.instantScroll();
+  sendMessage(): void {
+    const content = (this.newMessage || '').trim();
+    const hasContent = content.length > 0;
+    const hasAttachments = this.pendingAttachments.length > 0;
+    if (!hasContent && !hasAttachments) return;
+    if (!this.selectedKind) return;
+
+    let messageType = 'TEXT';
+    if (hasAttachments) {
+      const first = this.pendingAttachments[0];
+      if (first.attachmentType === 'IMAGE') messageType = 'IMAGE';
+      else if (first.attachmentType === 'VOICE') messageType = 'VOICE';
+      else messageType = 'FILE';
+    }
+
+    const payload: any = {
+      content: hasContent ? content : (messageType === 'IMAGE' ? 'Photo' : messageType === 'VOICE' ? 'Voice message' : 'File'),
+      messageType,
+      replyToId: this.replyingTo ? this.replyingTo.id : null,
+      attachments: this.pendingAttachments.length > 0 ? this.pendingAttachments : null
+    };
+    if (this.selectedKind === 'DM') payload.receiverId = this.selectedUserId;
+    else payload.chatRoomId = this.selectedRoomId;
+
+    this.newMessage = '';
+    this.pendingAttachments = [];
+    this.replyingTo = null;
+
+    this.api.sendMessageFull(payload).subscribe({
+      next: () => {
+        this.stopTypingSignal();
+      },
+      error: () => alert('Failed to send message')
+    });
+  }
+
+  onInputKeydown(e: KeyboardEvent): void {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      this.sendMessage();
+    } else {
+      this.signalTyping();
+    }
+  }
+
+  signalTyping(): void {
+    const recId = this.selectedKind === 'DM' ? this.selectedUserId : null;
+    const roomId = this.selectedKind === 'ROOM' ? this.selectedRoomId : null;
+    this.ws.sendTyping(recId, roomId, true);
+    if (this.typingStopTimeout) clearTimeout(this.typingStopTimeout);
+    this.typingStopTimeout = setTimeout(() => this.stopTypingSignal(), 2000);
+  }
+
+  stopTypingSignal(): void {
+    const recId = this.selectedKind === 'DM' ? this.selectedUserId : null;
+    const roomId = this.selectedKind === 'ROOM' ? this.selectedRoomId : null;
+    this.ws.sendTyping(recId, roomId, false);
+    if (this.typingStopTimeout) { clearTimeout(this.typingStopTimeout); this.typingStopTimeout = null; }
+  }
+
+  handleIncoming(msg: MessageDTO): void {
+    const inThisChat =
+      (this.selectedKind === 'DM' && msg.chatRoomId == null &&
+        ((msg.senderId === this.currentUserId && msg.receiverId === this.selectedUserId) ||
+          (msg.senderId === this.selectedUserId && msg.receiverId === this.currentUserId)))
+      ||
+      (this.selectedKind === 'ROOM' && msg.chatRoomId === this.selectedRoomId);
+
+    if (inThisChat) {
+      const idx = this.messages.findIndex(m => m.id === msg.id);
+      if (idx >= 0) {
+        this.messages[idx] = msg;
+      } else {
+        this.messages.push(msg);
+        if (this.isNearBottom || msg.senderId === this.currentUserId) {
+          setTimeout(() => this.scrollToBottom(), 50);
+        } else {
+          this.showNewMsgBtn = true;
+        }
+      }
+      this.groupedReactionsCache.delete(msg.id);
+      this.cdr.markForCheck();
+
+      if (msg.senderId !== this.currentUserId) {
+        if (this.selectedKind === 'DM') {
+          this.api.markAsRead(this.selectedUserId!).subscribe();
+        } else if (this.selectedKind === 'ROOM') {
+          this.api.markRoomRead(this.selectedRoomId!).subscribe();
+        }
+      }
+    } else {
+      this.loadConversations();
+    }
+  }
+
+  handleReadReceipt(receipt: ReadReceiptDTO): void {
+    if (!this.selectedUserId || this.selectedKind !== 'DM') return;
+    if (receipt.readByUserId !== this.selectedUserId) return;
+    this.messages.forEach(m => {
+      if (receipt.messageIds.includes(m.id)) {
+        m.readStatus = true;
+        m.readAt = receipt.readAt;
+      }
+    });
     this.cdr.markForCheck();
   }
 
-  onRightClick(event: MouseEvent, msg: MessageDTO): void {
-    event.preventDefault();
-    const isMine = msg.senderId === this.currentUserId;
-    const isDeleted = msg.deleted;
-    const ageMs = Date.now() - new Date(msg.createdAt).getTime();
-    const withinOneHour = ageMs < 3600000;
+  handleTyping(t: TypingDTO): void {
+    if (t.userId === this.currentUserId) return;
+    if (this.selectedKind === 'DM' && t.userId !== this.selectedUserId) return;
+    this.isOtherTyping = t.typing;
+    this.typingUserName = t.userName;
+    this.cdr.markForCheck();
+  }
 
-    this.contextMenuIsMine = isMine;
-    this.contextMenuIsDeleted = isDeleted;
-    this.contextMenuCanDeleteForAll = isMine && !isDeleted && withinOneHour;
+  handleMessageDeleted(del: MessageDeleteDTO): void {
+    const m = this.messages.find(x => x.id === del.messageId);
+    if (!m) return;
+    if (del.deleteType === 'FOR_EVERYONE') {
+      m.deleted = true;
+      m.content = 'This message was deleted';
+      m.attachments = [];
+    } else {
+      this.messages = this.messages.filter(x => x.id !== del.messageId);
+    }
+    this.cdr.markForCheck();
+  }
+
+  handleReactionNotification(n: ReactionNotificationDTO): void {
+    const m = this.messages.find(x => x.id === n.messageId);
+    if (!m) return;
+    if (n.action === 'ADDED') {
+      m.reactions = m.reactions || [];
+      const exists = m.reactions.some(r => r.userId === n.userId && r.emoji === n.emoji);
+      if (!exists) {
+        m.reactions.push({
+          id: Date.now(),
+          messageId: n.messageId,
+          userId: n.userId,
+          userName: n.userName,
+          emoji: n.emoji,
+          createdAt: new Date().toISOString()
+        });
+      }
+    } else if (n.action === 'REMOVED') {
+      m.reactions = (m.reactions || []).filter(r => !(r.userId === n.userId && r.emoji === n.emoji));
+    }
+    this.groupedReactionsCache.delete(n.messageId);
+    this.cdr.markForCheck();
+  }
+
+  handlePresence(p: PresenceDTO): void {
+    this.presenceMap.set(p.userId, p.status);
+    if (this.selectedKind === 'DM' && p.userId === this.selectedUserId) {
+      this.selectedPresence = p.status;
+    }
+    this.cdr.markForCheck();
+  }
+
+  onMessageContextMenu(e: MouseEvent, msg: MessageDTO): void {
+    e.preventDefault();
     this.contextMenuMsgId = msg.id;
-
-    const menuWidth = 220;
-    const menuHeight = isDeleted ? 50 : (this.contextMenuCanDeleteForAll ? 150 : 100);
-    const viewW = window.innerWidth;
-    const viewH = window.innerHeight;
-
-    let x = event.clientX;
-    let y = event.clientY;
-
-    if (x + menuWidth > viewW) x = viewW - menuWidth - 10;
-    if (x < 10) x = 10;
-    if (y + menuHeight > viewH) y = viewH - menuHeight - 10;
-    if (y < 10) y = 10;
-
+    const menuWidth = 200;
+    const menuHeight = 220;
+    const margin = 12;
+    let x = e.clientX;
+    let y = e.clientY;
+    if (x + menuWidth + margin > window.innerWidth) {
+      x = window.innerWidth - menuWidth - margin;
+    }
+    if (y + menuHeight + margin > window.innerHeight) {
+      y = window.innerHeight - menuHeight - margin;
+    }
     this.contextMenuX = x;
     this.contextMenuY = y;
+    this.contextMenuIsMine = msg.senderId === this.currentUserId;
+    this.contextMenuIsDeleted = msg.deleted;
+    this.contextMenuIsPinned = msg.pinned;
+    const createdMs = new Date(msg.createdAt).getTime();
+    this.contextMenuCanDeleteForAll = this.contextMenuIsMine && (Date.now() - createdMs) < 3600 * 1000;
+    this.contextMenuCanEdit = this.contextMenuIsMine && !msg.deleted && (Date.now() - createdMs) < 15 * 60 * 1000 && msg.messageType === 'TEXT';
     this.cdr.markForCheck();
   }
 
@@ -246,354 +487,364 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
-  deleteForMe(msgId: number): void {
+  replyAction(): void {
+    const m = this.messages.find(x => x.id === this.contextMenuMsgId);
+    if (m) this.replyingTo = m;
     this.closeContextMenu();
-    this.api.deleteMessage(msgId, 'FOR_ME').subscribe(() => {
-      this.messages = this.messages.filter(m => m.id !== msgId);
-      this.groupedReactionsCache.delete(msgId);
-      this.cdr.markForCheck();
+    setTimeout(() => this.msgInput?.nativeElement.focus(), 50);
+  }
+
+  cancelReply(): void { this.replyingTo = null; }
+
+  editAction(): void {
+    const m = this.messages.find(x => x.id === this.contextMenuMsgId);
+    if (m) {
+      this.editingMsgId = m.id;
+      this.editText = m.content;
+    }
+    this.closeContextMenu();
+  }
+
+  saveEdit(): void {
+    if (!this.editingMsgId) return;
+    const txt = this.editText.trim();
+    if (!txt) return;
+    this.api.editMessage(this.editingMsgId, txt).subscribe({
+      next: () => {
+        this.editingMsgId = null;
+        this.editText = '';
+      },
+      error: () => alert('Edit failed')
     });
   }
 
-  deleteForEveryone(msgId: number): void {
+  cancelEdit(): void {
+    this.editingMsgId = null;
+    this.editText = '';
+  }
+
+  deleteForMe(): void {
+    const id = this.contextMenuMsgId;
+    if (!id) return;
+    this.api.deleteMessage(id, 'FOR_ME').subscribe();
     this.closeContextMenu();
-    this.api.deleteMessage(msgId, 'FOR_EVERYONE').subscribe({
-      error: (err: any) => {
-        alert(err.error?.error || 'Cannot delete this message');
+  }
+
+  deleteForEveryone(): void {
+    const id = this.contextMenuMsgId;
+    if (!id) return;
+    if (!confirm('Delete this message for everyone?')) return;
+    this.api.deleteMessage(id, 'FOR_EVERYONE').subscribe();
+    this.closeContextMenu();
+  }
+
+  pinAction(): void {
+    const id = this.contextMenuMsgId;
+    if (!id) return;
+    this.api.pinMessage(id).subscribe({
+      next: (updated) => {
+        const m = this.messages.find(x => x.id === id);
+        if (m) m.pinned = true;
+        this.refreshPinned();
+        this.cdr.markForCheck();
+      },
+      error: (err) => alert(err?.error?.error || 'Max 3 pins per chat')
+    });
+    this.closeContextMenu();
+  }
+
+  unpinAction(): void {
+    const id = this.contextMenuMsgId;
+    if (!id) return;
+    this.api.unpinMessage(id).subscribe({
+      next: () => {
+        const m = this.messages.find(x => x.id === id);
+        if (m) m.pinned = false;
+        this.refreshPinned();
+        this.cdr.markForCheck();
       }
     });
+    this.closeContextMenu();
   }
 
-  toggleEmojiPicker(msgId: number, event: MouseEvent): void {
-    event.stopPropagation();
-    if (this.emojiPickerMsgId === msgId) {
-      this.emojiPickerMsgId = null;
-      this.cdr.markForCheck();
-      return;
+  refreshPinned(): void {
+    if (this.selectedKind === 'DM' && this.selectedUserId) {
+      this.api.getPinnedDm(this.selectedUserId).subscribe(p => {
+        this.pinnedMessages = p;
+        this.cdr.markForCheck();
+      });
+    } else if (this.selectedKind === 'ROOM' && this.selectedRoomId) {
+      this.api.getPinnedRoom(this.selectedRoomId).subscribe(p => {
+        this.pinnedMessages = p;
+        this.cdr.markForCheck();
+      });
     }
-    this.emojiPickerMsgId = msgId;
+  }
 
-    const btn = event.currentTarget as HTMLElement;
-    const rect = btn.getBoundingClientRect();
-    const pickerWidth = 210;
-    const pickerHeight = 40;
-
-    let x = rect.left + rect.width / 2 - pickerWidth / 2;
-    let y = rect.top - pickerHeight - 6;
-
-    if (x + pickerWidth > window.innerWidth - 8) {
-      x = window.innerWidth - pickerWidth - 8;
+  jumpToPinned(p: MessageDTO): void {
+    const el = document.getElementById('msg-' + p.id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('highlight');
+      setTimeout(() => el.classList.remove('highlight'), 1500);
     }
-    if (x < 8) x = 8;
+  }
 
-    if (y < 8) {
-      y = rect.bottom + 6;
+  openEmojiPicker(e: MouseEvent, msg: MessageDTO): void {
+    e.preventDefault();
+    e.stopPropagation();
+    this.emojiPickerMsgId = msg.id;
+    const pickerWidth = 220;
+    const pickerHeight = 44;
+    const margin = 12;
+    let x = e.clientX;
+    let y = e.clientY;
+    if (x + pickerWidth + margin > window.innerWidth) {
+      x = window.innerWidth - pickerWidth - margin;
     }
-
+    if (x < margin) x = margin;
+    if (y + pickerHeight + margin > window.innerHeight) {
+      y = e.clientY - pickerHeight - 8;
+    }
+    if (y < margin) y = margin;
     this.emojiPickerX = x;
     this.emojiPickerY = y;
     this.cdr.markForCheck();
   }
 
-  reactToMessage(msgId: number, emoji: string, event: MouseEvent): void {
-    event.stopPropagation();
-    this.emojiPickerMsgId = null;
-    this.api.toggleReaction(msgId, emoji).subscribe();
-  }
-
-  toggleExistingReaction(msgId: number, emoji: string, event: MouseEvent): void {
-    event.stopPropagation();
-    this.api.toggleReaction(msgId, emoji).subscribe();
-  }
-
-  getGroupedReactions(msgId: number): GroupedReaction[] {
-    return this.groupedReactionsCache.get(msgId) || [];
-  }
-
-  hasReactions(msg: MessageDTO): boolean {
-    return msg.reactions && msg.reactions.length > 0;
-  }
-
-  onChatAreaClick(): void {
-    this.closeContextMenu();
+  closeEmojiPicker(): void {
     this.emojiPickerMsgId = null;
     this.cdr.markForCheck();
   }
 
-  trackMsg(_i: number, msg: MessageDTO): number {
-    return msg.id;
+  reactToMsg(emoji: string): void {
+    const id = this.emojiPickerMsgId;
+    if (!id) return;
+    this.api.toggleReaction(id, emoji).subscribe();
+    this.closeEmojiPicker();
   }
 
-  isMyMessage(msg: MessageDTO): boolean {
-    return msg.senderId === this.currentUserId;
+  groupedReactions(m: MessageDTO): GroupedReaction[] {
+    if (this.groupedReactionsCache.has(m.id)) {
+      return this.groupedReactionsCache.get(m.id)!;
+    }
+    const map = new Map<string, GroupedReaction>();
+    (m.reactions || []).forEach(r => {
+      const g = map.get(r.emoji) || { emoji: r.emoji, count: 0, users: [], reactedByMe: false };
+      g.count++;
+      g.users.push(r.userName);
+      if (r.userId === this.currentUserId) g.reactedByMe = true;
+      map.set(r.emoji, g);
+    });
+    const arr = Array.from(map.values());
+    this.groupedReactionsCache.set(m.id, arr);
+    return arr;
+  }
+
+  toggleReactionGroup(m: MessageDTO, g: GroupedReaction): void {
+    this.api.toggleReaction(m.id, g.emoji).subscribe();
+  }
+
+  onAttachFileClick(): void { this.fileInput.nativeElement.click(); }
+  onAttachImageClick(): void { this.imageInput.nativeElement.click(); }
+
+  onFilePicked(e: any): void {
+    const file: File = e.target.files?.[0];
+    if (!file) return;
+    this.uploadingFile = true;
+    this.cdr.markForCheck();
+    this.api.uploadFile(file).subscribe({
+      next: (res: any) => {
+        this.pendingAttachments.push({
+          attachmentType: 'FILE',
+          url: res.url,
+          fileName: res.fileName,
+          fileSize: res.fileSize
+        });
+        this.uploadingFile = false;
+        e.target.value = '';
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.uploadingFile = false;
+        alert('Upload failed');
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  onImagePicked(e: any): void {
+    const file: File = e.target.files?.[0];
+    if (!file) return;
+    this.uploadingFile = true;
+    this.cdr.markForCheck();
+    this.api.uploadImage(file).subscribe({
+      next: (res: any) => {
+        this.pendingAttachments.push({
+          attachmentType: 'IMAGE',
+          url: res.url,
+          fileName: file.name,
+          fileSize: file.size
+        });
+        this.uploadingFile = false;
+        e.target.value = '';
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.uploadingFile = false;
+        alert('Upload failed');
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  onVoiceRecorded(payload: { blob: Blob, duration: number }): void {
+    if (!payload.blob || !this.selectedKind) return;
+    this.uploadingFile = true;
+    this.cdr.markForCheck();
+    const f = new File([payload.blob], 'voice-' + Date.now() + '.webm', { type: 'audio/webm' });
+    this.api.uploadVoice(f, payload.duration).subscribe({
+      next: (res: any) => {
+        this.uploadingFile = false;
+        const payload2: any = {
+          content: 'Voice message',
+          messageType: 'VOICE',
+          attachments: [{
+            attachmentType: 'VOICE',
+            url: res.url,
+            fileName: res.fileName,
+            fileSize: res.fileSize,
+            durationSeconds: res.durationSeconds
+          }]
+        };
+        if (this.selectedKind === 'DM') payload2.receiverId = this.selectedUserId;
+        else payload2.chatRoomId = this.selectedRoomId;
+        this.api.sendMessageFull(payload2).subscribe();
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.uploadingFile = false;
+        alert('Voice upload failed');
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  removePendingAttachment(idx: number): void {
+    this.pendingAttachments.splice(idx, 1);
+    this.cdr.markForCheck();
+  }
+
+  formatFileSize(b: number | undefined): string {
+    if (!b) return '';
+    if (b < 1024) return b + ' B';
+    if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
+    return (b / 1024 / 1024).toFixed(1) + ' MB';
+  }
+
+  formatDuration(s: number | undefined): string {
+    if (!s) return '0:00';
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${sec < 10 ? '0' : ''}${sec}`;
+  }
+
+  onMsgScroll(): void {
+    if (!this.msgContainer) return;
+    const el = this.msgContainer.nativeElement;
+    const threshold = 100;
+    this.isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+    if (this.isNearBottom && this.showNewMsgBtn) {
+      this.showNewMsgBtn = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  scrollToBottom(): void {
+    if (!this.msgContainer) return;
+    const el = this.msgContainer.nativeElement;
+    el.scrollTop = el.scrollHeight;
+    this.showNewMsgBtn = false;
+    this.isNearBottom = true;
+  }
+
+  onNewChatClick(): void {
+    this.showNewChatDialog = true;
+    this.cdr.markForCheck();
+  }
+
+  onDMCreated(uid: number): void {
+    this.showNewChatDialog = false;
+    this.router.navigate(['/chat', uid]);
+  }
+
+  onGroupCreated(room: ChatRoomDTO): void {
+    this.showNewChatDialog = false;
+    this.loadConversations();
+    this.router.navigate(['/chat/room', room.id]);
+  }
+
+  onRoomInfoUpdated(room: ChatRoomDTO): void {
+    this.selectedRoom = room;
+    this.selectedName = room.name;
+    const c = this.conversations.find(x => x.kind === 'ROOM' && x.roomId === room.id);
+    if (c) { c.userName = room.name; c.memberCount = room.memberCount; }
+    this.applyConvoFilter();
+    this.cdr.markForCheck();
+  }
+
+  onRoomLeft(roomId: number): void {
+    this.showRoomInfo = false;
+    this.selectedKind = null;
+    this.selectedRoomId = null;
+    this.selectedRoom = null;
+    this.messages = [];
+    this.ws.unsubscribeRoom(roomId);
+    this.loadConversations();
+    this.router.navigate(['/chat']);
   }
 
   avatar(name: string): string {
-    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0a66c2&color=fff`;
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name || '?')}&background=1a1a1a&color=fff`;
   }
 
-  timeAgo(dateStr: string): string {
-    const s = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-    if (s < 60) return 'now';
-    if (s < 3600) return Math.floor(s / 60) + 'm';
-    if (s < 86400) return Math.floor(s / 3600) + 'h';
-    return Math.floor(s / 86400) + 'd';
+  groupAvatar(name: string): string {
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'G')}&background=1a1a1a&color=fff`;
   }
 
-  getReplyName(msg: MessageDTO): string {
-    if (!msg.replyToSenderName) return '';
-    return msg.replyToSenderName === this.auth.getCurrentUser()?.name ? 'You' : msg.replyToSenderName;
+  presenceFor(c: ConversationDTO): string {
+    if (c.kind !== 'DM' || !c.userId) return '';
+    return this.presenceMap.get(c.userId) || c.presence || 'OFFLINE';
   }
 
-  private buildReactionsCache(msgId: number, reactions: ReactionDTO[]): void {
-    if (!reactions || reactions.length === 0) {
-      this.groupedReactionsCache.delete(msgId);
-      return;
-    }
-    const groups: { [emoji: string]: { count: number; users: string[]; reactedByMe: boolean } } = {};
-    for (const r of reactions) {
-      if (!groups[r.emoji]) {
-        groups[r.emoji] = { count: 0, users: [], reactedByMe: false };
-      }
-      groups[r.emoji].count++;
-      groups[r.emoji].users.push(r.userName);
-      if (r.userId === this.currentUserId) {
-        groups[r.emoji].reactedByMe = true;
-      }
-    }
-    this.groupedReactionsCache.set(msgId, Object.keys(groups).map(emoji => ({
-      emoji,
-      count: groups[emoji].count,
-      users: groups[emoji].users,
-      reactedByMe: groups[emoji].reactedByMe
-    })));
+  trackByConvo(_: number, c: ConversationDTO): string {
+    return c.kind + ':' + (c.userId || c.roomId);
   }
 
-  private rebuildAllReactionsCache(): void {
-    this.groupedReactionsCache.clear();
-    for (const msg of this.messages) {
-      if (msg.reactions && msg.reactions.length > 0) {
-        this.buildReactionsCache(msg.id, msg.reactions);
-      }
-    }
+  trackByMsg(_: number, m: MessageDTO): number {
+    return m.id;
   }
 
-  private handleReactionNotification(notification: ReactionNotificationDTO): void {
-    const msg = this.messages.find(m => m.id === notification.messageId);
-    if (!msg) return;
-
-    if (!msg.reactions) msg.reactions = [];
-
-    if (notification.action === 'ADDED') {
-      const alreadyExists = msg.reactions.some(
-        r => r.userId === notification.userId && r.emoji === notification.emoji
-      );
-      if (!alreadyExists) {
-        msg.reactions = [...msg.reactions, {
-          id: 0,
-          messageId: notification.messageId,
-          userId: notification.userId,
-          userName: notification.userName,
-          emoji: notification.emoji,
-          createdAt: new Date().toISOString()
-        }];
-      }
-    } else if (notification.action === 'REMOVED') {
-      msg.reactions = msg.reactions.filter(
-        r => !(r.userId === notification.userId && r.emoji === notification.emoji)
-      );
-    }
-
-    this.buildReactionsCache(msg.id, msg.reactions);
-    this.cdr.markForCheck();
+  formatTime(iso: string): string {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
 
-  private openChat(userId: number): void {
-    this.selectedUserId = userId;
-    this.showNewMsgBtn = false;
-    this.isNearBottom = true;
-    this.isOtherTyping = false;
-    this.contextMenuMsgId = null;
-    this.replyingTo = null;
-    this.emojiPickerMsgId = null;
-    this.msgState.setActiveChat(userId);
-    this.api.getConversation(userId).subscribe(res => {
-      this.messages = (res.content || []).slice().reverse();
-      this.rebuildAllReactionsCache();
-      this.cdr.markForCheck();
-      this.instantScroll();
-    });
-    this.markReadById(userId);
+  formatDay(iso: string): string {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const today = new Date();
+    if (d.toDateString() === today.toDateString()) return 'Today';
+    const yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
+    if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+    return d.toLocaleDateString();
   }
 
-  private handleIncoming(msg: MessageDTO): void {
-    this.updateConvoList(msg);
-
-    if (msg.senderId === this.selectedUserId || msg.receiverId === this.selectedUserId) {
-      if (this.messages.some(m => m.id === msg.id)) return;
-
-      if (!msg.reactions) msg.reactions = [];
-      this.messages = [...this.messages, msg];
-      this.buildReactionsCache(msg.id, msg.reactions);
-      this.cdr.markForCheck();
-
-      if (this.isNearBottom || msg.senderId === this.currentUserId) {
-        this.instantScroll();
-        this.showNewMsgBtn = false;
-      } else {
-        this.showNewMsgBtn = true;
-        this.cdr.markForCheck();
-      }
-
-      if (msg.senderId === this.selectedUserId) {
-        this.api.markAsRead(msg.senderId).subscribe();
-      }
-    }
-
-    this.cdr.markForCheck();
-  }
-
-  private handleReadReceipt(receipt: ReadReceiptDTO): void {
-    if (receipt.senderUserId !== this.currentUserId) return;
-    let changed = false;
-    for (const msg of this.messages) {
-      if (receipt.messageIds.includes(msg.id)) {
-        msg.readStatus = true;
-        msg.readAt = receipt.readAt;
-        changed = true;
-      }
-    }
-    if (changed) {
-      this.messages = [...this.messages];
-      this.cdr.markForCheck();
-    }
-  }
-
-  private handleTyping(typing: TypingDTO): void {
-    if (typing.userId !== this.selectedUserId) return;
-
-    if (typing.typing) {
-      this.isOtherTyping = true;
-      this.typingUserName = typing.userName;
-      if (this.typingReceiverTimeout) clearTimeout(this.typingReceiverTimeout);
-      this.typingReceiverTimeout = setTimeout(() => {
-        this.isOtherTyping = false;
-        this.cdr.markForCheck();
-      }, 4000);
-    } else {
-      this.isOtherTyping = false;
-      if (this.typingReceiverTimeout) {
-        clearTimeout(this.typingReceiverTimeout);
-        this.typingReceiverTimeout = null;
-      }
-    }
-
-    this.cdr.markForCheck();
-  }
-
-  private handleMessageDeleted(del: MessageDeleteDTO): void {
-    if (del.deleteType === 'FOR_ME') {
-      this.messages = this.messages.filter(m => m.id !== del.messageId);
-      this.groupedReactionsCache.delete(del.messageId);
-    } else {
-      const msg = this.messages.find(m => m.id === del.messageId);
-      if (msg) {
-        msg.deleted = true;
-        msg.deletedBy = del.deletedBy;
-        msg.deleteType = 'FOR_EVERYONE';
-        msg.content = 'This message was deleted';
-        msg.reactions = [];
-        this.groupedReactionsCache.delete(del.messageId);
-      }
-      this.messages = [...this.messages];
-    }
-
-    const convo = this.conversations.find(c =>
-      c.userId === del.otherUserId || c.userId === del.deletedBy
-    );
-    if (convo) {
-      const last = this.messages[this.messages.length - 1];
-      if (last && last.id === del.messageId) {
-        convo.lastMessage = 'This message was deleted';
-      }
-    }
-
-    this.cdr.markForCheck();
-  }
-
-  private updateConvoList(msg: MessageDTO): void {
-    if (msg.senderId !== this.currentUserId) {
-      const existing = this.conversations.find(c => c.userId === msg.senderId);
-      if (existing) {
-        existing.lastMessage = msg.content;
-        existing.lastMessageTime = msg.createdAt;
-        if (msg.senderId !== this.selectedUserId) {
-          existing.unreadCount = (existing.unreadCount || 0) + 1;
-        }
-      } else {
-        this.conversations.unshift({
-          userId: msg.senderId,
-          userName: msg.senderName,
-          userProfilePic: msg.senderProfilePic,
-          lastMessage: msg.content,
-          lastMessageTime: msg.createdAt,
-          unreadCount: msg.senderId !== this.selectedUserId ? 1 : 0
-        });
-      }
-    } else {
-      const existing = this.conversations.find(c => c.userId === msg.receiverId);
-      if (existing) {
-        existing.lastMessage = msg.content;
-        existing.lastMessageTime = msg.createdAt;
-      }
-    }
-  }
-
-  private updateConvoPreview(userId: number, content: string, time: string): void {
-    const c = this.conversations.find(x => x.userId === userId);
-    if (c) {
-      c.lastMessage = content;
-      c.lastMessageTime = time;
-    }
-  }
-
-  private markRead(convo: ConversationDTO): void {
-    const prev = convo.unreadCount || 0;
-    if (prev > 0) {
-      this.api.markAsRead(convo.userId).subscribe(() => {
-        convo.unreadCount = 0;
-        this.msgState.decrement(prev);
-        this.cdr.markForCheck();
-      });
-    }
-  }
-
-  private markReadById(userId: number): void {
-    const convo = this.conversations.find(c => c.userId === userId);
-    if (convo) this.markRead(convo);
-  }
-
-  private stopTyping(): void {
-    if (this.isSendingTyping && this.selectedUserId) {
-      this.isSendingTyping = false;
-      this.ws.sendTyping(this.selectedUserId, false);
-    }
-    if (this.typingStopTimeout) {
-      clearTimeout(this.typingStopTimeout);
-      this.typingStopTimeout = null;
-    }
-    if (this.typingInterval) {
-      clearInterval(this.typingInterval);
-      this.typingInterval = null;
-    }
-  }
-
-  private instantScroll(): void {
-    this.zone.runOutsideAngular(() => {
-      requestAnimationFrame(() => {
-        const el = this.msgContainer?.nativeElement;
-        if (el) el.scrollTop = el.scrollHeight;
-      });
-    });
+  shouldShowDateSep(idx: number): boolean {
+    if (idx === 0) return true;
+    const prev = this.messages[idx - 1];
+    const curr = this.messages[idx];
+    return new Date(prev.createdAt).toDateString() !== new Date(curr.createdAt).toDateString();
   }
 }

@@ -16,7 +16,7 @@ import {
   StoryDTO, UserStoriesGroupDTO, CreateStoryRequest, StoryViewer,
   ConnectionSuggestionDTO, MutualConnectionDTO,
   SkillEndorsementDTO, CreateEndorsementRequest, EndorsementSummaryDTO,
-  ProfileCompletionDTO, SkillSuggestion
+  ProfileCompletionDTO, SkillSuggestion, ChatRoomDTO, AttachmentDTO, PresenceDTO
 } from '../models';
 
 @Injectable({ providedIn: 'root' })
@@ -132,10 +132,106 @@ export class ApiService {
   getMutualConnectionCount(otherUserId: number): Observable<number> {
     return this.http.get<number>(`${this.api}/connections/mutuals/${otherUserId}/count`);
   }
-
   sendMessage(receiverId: number, content: string): Observable<MessageDTO> {
-    return this.http.post<MessageDTO>(`${this.api}/messages`, { receiverId, content });
+    return this.http.post<MessageDTO>(`${this.api}/messages`, { receiverId, content, messageType: 'TEXT' });
   }
+
+  sendMessageWithReply(receiverId: number, content: string, replyToId: number | null): Observable<MessageDTO> {
+    return this.http.post<MessageDTO>(`${this.api}/messages`, { receiverId, content, replyToId, messageType: 'TEXT' });
+  }
+  sendMessageFull(payload: any): Observable<MessageDTO> {
+    return this.http.post<MessageDTO>(`${this.api}/messages`, payload);
+  }
+
+  getRoomMessages(roomId: number, page = 0, size = 50): Observable<PageResponse<MessageDTO>> {
+    return this.http.get<PageResponse<MessageDTO>>(`${this.api}/rooms/${roomId}/messages?page=${page}&size=${size}`);
+  }
+
+  editMessage(messageId: number, content: string): Observable<MessageDTO> {
+    return this.http.put<MessageDTO>(`${this.api}/messages/${messageId}/edit`, { content });
+  }
+
+  pinMessage(messageId: number): Observable<MessageDTO> {
+    return this.http.post<MessageDTO>(`${this.api}/messages/${messageId}/pin`, {});
+  }
+
+  unpinMessage(messageId: number): Observable<void> {
+    return this.http.delete<void>(`${this.api}/messages/${messageId}/pin`);
+  }
+
+  getPinnedDm(otherUserId: number): Observable<MessageDTO[]> {
+    return this.http.get<MessageDTO[]>(`${this.api}/pinned/dm/${otherUserId}`);
+  }
+
+  getPinnedRoom(roomId: number): Observable<MessageDTO[]> {
+    return this.http.get<MessageDTO[]>(`${this.api}/pinned/room/${roomId}`);
+  }
+
+  searchMessages(q: string): Observable<MessageDTO[]> {
+    return this.http.get<MessageDTO[]>(`${this.api}/messages/search?q=${encodeURIComponent(q)}`);
+  }
+
+  getMyRooms(): Observable<ChatRoomDTO[]> {
+    return this.http.get<ChatRoomDTO[]>(`${this.api}/rooms`);
+  }
+
+  createRoom(name: string, memberIds: number[], avatarUrl?: string): Observable<ChatRoomDTO> {
+    return this.http.post<ChatRoomDTO>(`${this.api}/rooms`, { name, memberIds, avatarUrl });
+  }
+
+  getRoom(roomId: number): Observable<ChatRoomDTO> {
+    return this.http.get<ChatRoomDTO>(`${this.api}/rooms/${roomId}`);
+  }
+
+  addRoomMembers(roomId: number, userIds: number[]): Observable<ChatRoomDTO> {
+    return this.http.post<ChatRoomDTO>(`${this.api}/rooms/${roomId}/members`, { userIds });
+  }
+
+  removeRoomMember(roomId: number, userId: number): Observable<void> {
+    return this.http.delete<void>(`${this.api}/rooms/${roomId}/members/${userId}`);
+  }
+
+  leaveRoom(roomId: number): Observable<void> {
+    return this.http.post<void>(`${this.api}/rooms/${roomId}/leave`, {});
+  }
+
+  renameRoom(roomId: number, name: string): Observable<void> {
+    return this.http.put<void>(`${this.api}/rooms/${roomId}/rename`, { name });
+  }
+
+  markRoomRead(roomId: number): Observable<void> {
+    return this.http.put<void>(`${this.api}/rooms/${roomId}/read`, {});
+  }
+
+  uploadFile(file: File): Observable<any> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post(`${this.api}/upload/file`, form);
+  }
+
+  uploadVoice(file: File, durationSeconds: number): Observable<any> {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('duration', String(durationSeconds));
+    return this.http.post(`${this.api}/upload/voice`, form);
+  }
+
+  presenceHeartbeat(): Observable<void> {
+    return this.http.post<void>(`${this.api}/presence/heartbeat`, {});
+  }
+
+  setPresenceStatus(status: 'ONLINE' | 'AWAY' | 'OFFLINE'): Observable<void> {
+    return this.http.post<void>(`${this.api}/presence/status`, { status });
+  }
+
+  getPresence(userId: number): Observable<PresenceDTO> {
+    return this.http.get<PresenceDTO>(`${this.api}/presence/${userId}`);
+  }
+
+  bulkPresence(userIds: number[]): Observable<PresenceDTO[]> {
+    return this.http.post<PresenceDTO[]>(`${this.api}/presence/bulk`, { userIds });
+  }
+  
   getConversation(userId: number, page = 0): Observable<PageResponse<MessageDTO>> {
     return this.http.get<PageResponse<MessageDTO>>(`${this.api}/messages/${userId}?page=${page}`);
   }
@@ -145,11 +241,7 @@ export class ApiService {
   markAsRead(senderId: number): Observable<void> {
     return this.http.put<void>(`${this.api}/messages/read/${senderId}`, {});
   }
-  sendMessageWithReply(receiverId: number, content: string, replyToId: number | null): Observable<MessageDTO> {
-    const body: any = { receiverId, content };
-    if (replyToId) body.replyToId = replyToId;
-    return this.http.post<MessageDTO>(`${this.api}/messages`, body);
-  }
+
   deleteMessage(messageId: number, deleteType: string): Observable<MessageDeleteDTO> {
     return this.http.post<MessageDeleteDTO>(`${this.api}/messages/delete`, { messageId, deleteType });
   }
