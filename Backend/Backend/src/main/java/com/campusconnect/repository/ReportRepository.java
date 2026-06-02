@@ -8,4 +8,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ReportRepository extends JpaRepository<Report, Long> {
     Page<Report> findByStatusOrderByCreatedAtDesc(String status, Pageable pageable);
     boolean existsByReporterIdAndTargetTypeAndTargetId(Long reporterId, String targetType, Long targetId);
+    long countByStatus(String status);
 }

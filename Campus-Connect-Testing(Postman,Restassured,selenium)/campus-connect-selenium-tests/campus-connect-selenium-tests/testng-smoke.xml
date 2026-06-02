@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!-- SMOKE suite: frontend only (ng serve). No backend. Guaranteed green. -->
+<suite name="CampusConnect-Smoke-Suite" verbose="1">
+
+  <listeners>
+    <listener class-name="com.campusconnect.tests.listeners.ExtentReportListener"/>
+    <listener class-name="com.campusconnect.tests.listeners.RetryTransformer"/>
+  </listeners>
+
+  <test name="Smoke">
+    <groups><run><include name="smoke"/></run></groups>
+    <classes>
+      <class name="com.campusconnect.tests.tests.LoginPageUiTest"/>
+      <class name="com.campusconnect.tests.tests.LoginValidationTest"/>
+      <class name="com.campusconnect.tests.tests.LoginExtendedTest"/>
+      <class name="com.campusconnect.tests.tests.RegisterPageUiTest"/>
+      <class name="com.campusconnect.tests.tests.RegisterValidationTest"/>
+      <class name="com.campusconnect.tests.tests.RegisterExtendedTest"/>
+      <class name="com.campusconnect.tests.tests.RegisterPlaceholdersTest"/>
+      <class name="com.campusconnect.tests.tests.RegisterRolesTest"/>
+      <class name="com.campusconnect.tests.tests.NavigationTest"/>
+      <class name="com.campusconnect.tests.tests.RouteGuardTest"/>
+      <class name="com.campusconnect.tests.tests.AppRootTest"/>
+    </classes>
+  </test>
+</suite>

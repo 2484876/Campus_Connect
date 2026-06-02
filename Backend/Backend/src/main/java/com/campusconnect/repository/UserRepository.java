@@ -1,9 +1,11 @@
 package com.campusconnect.repository;
 import com.campusconnect.entity.User;
+import com.campusconnect.enums.Role;
 import org.springframework.data.domain.*;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -21,4 +23,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query(value = "SELECT * FROM users WHERE work_anniversary IS NOT NULL AND MONTH(work_anniversary) = ?1 AND DAY(work_anniversary) = ?2 AND is_active = 1", nativeQuery = true)
     List<User> findByWorkAnniversaryMonthAndDay(int month, int day);
+
+    @Query("SELECT u FROM User u WHERE (:q IS NULL OR LOWER(u.name) LIKE LOWER(CONCAT('%',:q,'%')) OR LOWER(u.email) LIKE LOWER(CONCAT('%',:q,'%'))) AND (:active IS NULL OR u.isActive = :active) AND (:role IS NULL OR u.role = :role) ORDER BY u.createdAt DESC")
+    Page<User> adminSearch(@Param("q") String q, @Param("active") Boolean active, @Param("role") Role role, Pageable pageable);
+
+    long countByIsActiveTrue();
+    long countByRole(Role role);
+    long countByRoleAndIsActiveTrue(Role role);
+    long countByCreatedAtAfter(LocalDateTime since);
 }

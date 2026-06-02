@@ -1,0 +1,8 @@
+target/
+*.class
+.idea/
+*.iml
+.vscode/
+test-output/
+extent-report/
+target/extent-report/

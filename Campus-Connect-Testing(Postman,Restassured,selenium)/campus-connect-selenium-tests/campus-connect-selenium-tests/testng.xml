@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!-- FULL suite: smoke + authed + e2e. Needs frontend AND backend (:8080). -->
+<suite name="CampusConnect-Full-Suite" verbose="1">
+
+  <listeners>
+    <listener class-name="com.campusconnect.tests.listeners.ExtentReportListener"/>
+    <listener class-name="com.campusconnect.tests.listeners.RetryTransformer"/>
+  </listeners>
+
+  <test name="Smoke">
+    <groups><run><include name="smoke"/></run></groups>
+    <classes>
+      <class name="com.campusconnect.tests.tests.LoginPageUiTest"/>
+      <class name="com.campusconnect.tests.tests.LoginValidationTest"/>
+      <class name="com.campusconnect.tests.tests.LoginExtendedTest"/>
+      <class name="com.campusconnect.tests.tests.RegisterPageUiTest"/>
+      <class name="com.campusconnect.tests.tests.RegisterValidationTest"/>
+      <class name="com.campusconnect.tests.tests.RegisterExtendedTest"/>
+      <class name="com.campusconnect.tests.tests.RegisterPlaceholdersTest"/>
+      <class name="com.campusconnect.tests.tests.RegisterRolesTest"/>
+      <class name="com.campusconnect.tests.tests.NavigationTest"/>
+      <class name="com.campusconnect.tests.tests.RouteGuardTest"/>
+      <class name="com.campusconnect.tests.tests.AppRootTest"/>
+    </classes>
+  </test>
+
+  <test name="Authed-Pages">
+    <groups><run><include name="authed"/></run></groups>
+    <classes>
+      <class name="com.campusconnect.tests.tests.NavBarTest"/>
+      <class name="com.campusconnect.tests.tests.NavBarLinksPresenceTest"/>
+      <class name="com.campusconnect.tests.tests.NavBarNavigationTest"/>
+      <class name="com.campusconnect.tests.tests.NavBarDropdownTest"/>
+      <class name="com.campusconnect.tests.tests.RouteAuthedLoadTest"/>
+      <class name="com.campusconnect.tests.tests.FeedPageTest"/>
+      <class name="com.campusconnect.tests.tests.FeedExtendedTest"/>
+      <class name="com.campusconnect.tests.tests.FeedLeftNavLinksTest"/>
+      <class name="com.campusconnect.tests.tests.ProfilePageTest"/>
+      <class name="com.campusconnect.tests.tests.ProfileExtendedTest"/>
+      <class name="com.campusconnect.tests.tests.ConnectionsPageTest"/>
+      <class name="com.campusconnect.tests.tests.ConnectionsTabsTest"/>
+      <class name="com.campusconnect.tests.tests.ChatPageTest"/>
+      <class name="com.campusconnect.tests.tests.ChatExtendedTest"/>
+      <class name="com.campusconnect.tests.tests.EventsPageTest"/>
+      <class name="com.campusconnect.tests.tests.EventsTabsTest"/>
+      <class name="com.campusconnect.tests.tests.NotificationsPageTest"/>
+      <class name="com.campusconnect.tests.tests.CommunitiesPageTest"/>
+      <class name="com.campusconnect.tests.tests.CommunitiesExtendedTest"/>
+      <class name="com.campusconnect.tests.tests.BookmarksPageTest"/>
+      <class name="com.campusconnect.tests.tests.HashtagPageTest"/>
+      <class name="com.campusconnect.tests.tests.AchievementsPageTest"/>
+      <class name="com.campusconnect.tests.tests.AchievementsExtendedTest"/>
+      <class name="com.campusconnect.tests.tests.SkillSearchPageTest"/>
+      <class name="com.campusconnect.tests.tests.SkillSearchExtendedTest"/>
+      <class name="com.campusconnect.tests.tests.AdminGuardTest"/>
+      <class name="com.campusconnect.tests.tests.FeedLikeCommentTest"/>
+      <class name="com.campusconnect.tests.tests.KudosDialogTest"/>
+      <class name="com.campusconnect.tests.tests.EndorsementsWidgetTest"/>
+      <class name="com.campusconnect.tests.tests.ChatReactionTest"/>
+      <class name="com.campusconnect.tests.tests.ChatMessageInputTest"/>
+    </classes>
+  </test>
+
+  <test name="E2E-Register-Then-Login">
+    <groups><run><include name="e2e"/></run></groups>
+    <classes>
+      <class name="com.campusconnect.tests.tests.RegisterThenLoginE2ETest"/>
+    </classes>
+  </test>
+
+</suite>

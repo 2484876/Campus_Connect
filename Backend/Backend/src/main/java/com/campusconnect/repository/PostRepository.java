@@ -45,4 +45,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     @Query(value = "SELECT LOWER(h.tag) FROM hashtags h JOIN post_hashtags ph ON ph.hashtag_id = h.id WHERE ph.post_id = :postId", nativeQuery = true)
     List<String> findHashtagsByPostId(@Param("postId") Long postId);
+
+    long countByIsActiveTrue();
+    long countByUserIdAndIsActiveTrue(Long userId);
 }

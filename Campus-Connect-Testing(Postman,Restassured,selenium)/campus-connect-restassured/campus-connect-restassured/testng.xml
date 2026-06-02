@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="CampusConnectApiSuite" verbose="1" thread-count="1" preserve-order="true">
+    <listeners>
+        <listener class-name="com.campusconnect.tests.support.ExtentReportListener"/>
+    </listeners>
+    <test name="CampusConnect-Full-Flow" preserve-order="true">
+        <classes>
+            <class name="com.campusconnect.tests.T00AuthSetupTest"/>
+            <class name="com.campusconnect.tests.T01UsersTest"/>
+            <class name="com.campusconnect.tests.T02ConnectionsTest"/>
+            <class name="com.campusconnect.tests.T03FeedPostsTest"/>
+            <class name="com.campusconnect.tests.T04CommentsTest"/>
+            <class name="com.campusconnect.tests.T05PollsTest"/>
+            <class name="com.campusconnect.tests.T06BookmarksTest"/>
+            <class name="com.campusconnect.tests.T07HashtagsTest"/>
+            <class name="com.campusconnect.tests.T08KudosTest"/>
+            <class name="com.campusconnect.tests.T09EndorsementsTest"/>
+            <class name="com.campusconnect.tests.T10EventsEventChatTest"/>
+            <class name="com.campusconnect.tests.T11CommunitiesTest"/>
+            <class name="com.campusconnect.tests.T12StoriesTest"/>
+            <class name="com.campusconnect.tests.T13MessagingTest"/>
+            <class name="com.campusconnect.tests.T14NotificationsTest"/>
+            <class name="com.campusconnect.tests.T15PresenceTest"/>
+            <class name="com.campusconnect.tests.T16CareerTest"/>
+            <class name="com.campusconnect.tests.T17SearchTest"/>
+            <class name="com.campusconnect.tests.T18GamificationTest"/>
+            <class name="com.campusconnect.tests.T19ReportsBlockingTest"/>
+            <class name="com.campusconnect.tests.T20AdminPanelTest"/>
+            <class name="com.campusconnect.tests.T21FileUploadTest"/>
+        </classes>
+    </test>
+</suite>

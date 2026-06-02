@@ -11,6 +11,14 @@ export const authGuard = () => {
   return false;
 };
 
+export const adminGuard = () => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+  if (auth.isLoggedIn() && auth.getCurrentUser()?.role === 'ADMIN') return true;
+  router.navigate([auth.isLoggedIn() ? '/feed' : '/login']);
+  return false;
+};
+
 export const routes: Routes = [
   { path: 'login', loadComponent: () => import('./pages/login/login').then(m => m.LoginComponent) },
   { path: 'register', loadComponent: () => import('./pages/register/register').then(m => m.RegisterComponent) },
@@ -41,6 +49,20 @@ export const routes: Routes = [
 
   { path: 'skills', loadComponent: () => import('./pages/skill-search/skill-search.component').then(m => m.SkillSearchComponent), canActivate: [authGuard] },
   { path: 'skill-search', redirectTo: 'skills', pathMatch: 'full' },
+
+  {
+    path: 'admin',
+    loadComponent: () => import('./pages/admin/admin-layout.component').then(m => m.AdminLayoutComponent),
+    canActivate: [adminGuard],
+    children: [
+      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+      { path: 'dashboard', loadComponent: () => import('./pages/admin/admin-dashboard.component').then(m => m.AdminDashboardComponent) },
+      { path: 'users', loadComponent: () => import('./pages/admin/admin-users.component').then(m => m.AdminUsersComponent) },
+      { path: 'reports', loadComponent: () => import('./pages/admin/admin-reports.component').then(m => m.AdminReportsComponent) },
+      { path: 'content', loadComponent: () => import('./pages/admin/admin-content.component').then(m => m.AdminContentComponent) },
+      { path: 'logs', loadComponent: () => import('./pages/admin/admin-logs.component').then(m => m.AdminLogsComponent) }
+    ]
+  },
 
   { path: '', redirectTo: 'feed', pathMatch: 'full' },
   { path: '**', redirectTo: 'feed' }
