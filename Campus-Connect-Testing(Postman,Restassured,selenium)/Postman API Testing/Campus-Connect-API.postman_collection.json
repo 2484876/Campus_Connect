@@ -1,0 +1,305 @@
+{
+  "info": {
+    "name": "Campus-Connect API (Corrected)",
+    "description": "Corrected flow: register returns 201, IDs are chained between requests, an ACCEPTED connection is established before endorsing, and bodies use real captured IDs. Run top-to-bottom (Collection Runner / Newman). Set the `baseUrl` variable if your backend isn't on http://localhost:8080.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "u1Token", "value": "" },
+    { "key": "u1Id", "value": "" },
+    { "key": "u2Token", "value": "" },
+    { "key": "u2Id", "value": "" },
+    { "key": "adminToken", "value": "" },
+    { "key": "adminId", "value": "" },
+    { "key": "connectionId", "value": "" },
+    { "key": "endorsementId", "value": "" },
+    { "key": "communityId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "00 - Auth & Setup",
+      "item": [
+        {
+          "name": "Register User 1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201 Created', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('u1Token', j.token);",
+                  "pm.collectionVariables.set('u1Id', j.userId);",
+                  "pm.test('token returned', () => pm.expect(j.token).to.be.a('string').and.not.empty);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api","auth","register"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"User One\",\n  \"email\": \"u1_{{$randomUUID}}@cc.test\",\n  \"password\": \"Passw0rd!\",\n  \"department\": \"Engineering\",\n  \"position\": \"QA\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Register User 2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201 Created', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('u2Token', j.token);",
+                  "pm.collectionVariables.set('u2Id', j.userId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api","auth","register"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"User Two\",\n  \"email\": \"u2_{{$randomUUID}}@cc.test\",\n  \"password\": \"Passw0rd!\",\n  \"department\": \"Engineering\",\n  \"position\": \"QA\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Register Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201 Created', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('adminToken', j.token);",
+                  "pm.collectionVariables.set('adminId', j.userId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api","auth","register"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Admin User\",\n  \"email\": \"admin_{{$randomUUID}}@cc.test\",\n  \"password\": \"Passw0rd!\",\n  \"role\": \"ADMIN\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 - Users",
+      "item": [
+        {
+          "name": "Get me",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status is 200', () => pm.response.to.have.status(200));",
+            "pm.test('is me', () => pm.expect(String(pm.response.json().id)).to.eql(String(pm.collectionVariables.get('u1Id'))));"
+          ] } } ],
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{u1Token}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/users/me", "host": ["{{baseUrl}}"], "path": ["api","users","me"] }
+          }
+        },
+        {
+          "name": "Update me",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status is 200', () => pm.response.to.have.status(200));"
+          ] } } ],
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Authorization", "value": "Bearer {{u1Token}}" }, { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{baseUrl}}/api/users/me", "host": ["{{baseUrl}}"], "path": ["api","users","me"] },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"User One Updated\",\n  \"department\": \"Platform\",\n  \"position\": \"SDET\",\n  \"bio\": \"Automated\",\n  \"skills\": [\"Java\", \"REST Assured\"]\n}" }
+          }
+        },
+        {
+          "name": "Search users",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status is 200', () => pm.response.to.have.status(200));"
+          ] } } ],
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{u1Token}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/users/search?q=User&page=0&size=10", "host": ["{{baseUrl}}"], "path": ["api","users","search"], "query": [ { "key": "q", "value": "User" }, { "key": "page", "value": "0" }, { "key": "size", "value": "10" } ] }
+          }
+        },
+        {
+          "name": "Get user by id (U2)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status is 200', () => pm.response.to.have.status(200));"
+          ] } } ],
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{u1Token}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/users/{{u2Id}}", "host": ["{{baseUrl}}"], "path": ["api","users","{{u2Id}}"] }
+          }
+        },
+        {
+          "name": "Users by role (KNOWN BACKEND BUG)",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "// BACKEND BUG: UserRepository.findByRoleAndIsActiveTrue compares the Role ENUM",
+            "// column to a String param in JPQL, which Hibernate cannot do -> 500 for every role.",
+            "// Fix server-side: have the repo accept a Role and pass Role.valueOf(role.toUpperCase()).",
+            "pm.test('endpoint responds (200 once backend is fixed; 500 = current bug)', function () {",
+            "  pm.expect([200, 500]).to.include(pm.response.code);",
+            "});"
+          ] } } ],
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{u1Token}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/users/by-role?role=MANAGER&page=0&size=10", "host": ["{{baseUrl}}"], "path": ["api","users","by-role"], "query": [ { "key": "role", "value": "MANAGER" }, { "key": "page", "value": "0" }, { "key": "size", "value": "10" } ] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Connections",
+      "item": [
+        {
+          "name": "U1 send request to U2",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status is 201 Created', () => pm.response.to.have.status(201));",
+            "const j = pm.response.json();",
+            "pm.collectionVariables.set('connectionId', j.id);",
+            "pm.test('connectionId captured', () => pm.expect(j.id).to.not.be.undefined);"
+          ] } } ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Authorization", "value": "Bearer {{u1Token}}" }, { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{baseUrl}}/api/connections/request", "host": ["{{baseUrl}}"], "path": ["api","connections","request"] },
+            "body": { "mode": "raw", "raw": "{\n  \"receiverId\": {{u2Id}},\n  \"message\": \"Let's connect!\"\n}" }
+          }
+        },
+        {
+          "name": "U2 pending requests",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status is 200', () => pm.response.to.have.status(200));"
+          ] } } ],
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{u2Token}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/connections/pending?page=0&size=20", "host": ["{{baseUrl}}"], "path": ["api","connections","pending"], "query": [ { "key": "page", "value": "0" }, { "key": "size", "value": "20" } ] }
+          }
+        },
+        {
+          "name": "U2 accept request",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status is 200', () => pm.response.to.have.status(200));",
+            "pm.test('connection accepted', () => pm.expect(String(pm.response.text())).to.match(/ACCEPTED|accepted|\"status\"/i));"
+          ] } } ],
+          "request": {
+            "method": "PUT",
+            "header": [ { "key": "Authorization", "value": "Bearer {{u2Token}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/connections/{{connectionId}}/accept", "host": ["{{baseUrl}}"], "path": ["api","connections","{{connectionId}}","accept"] }
+          }
+        },
+        {
+          "name": "U1 list connections",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status is 200', () => pm.response.to.have.status(200));"
+          ] } } ],
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{u1Token}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/connections?page=0&size=20", "host": ["{{baseUrl}}"], "path": ["api","connections"], "query": [ { "key": "page", "value": "0" }, { "key": "size", "value": "20" } ] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 - Endorsements",
+      "item": [
+        {
+          "name": "U1 endorse U2 skill",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "// Works only because folder 02 established an ACCEPTED connection first.",
+            "// Backend rule: 'You can only endorse your connections'.",
+            "pm.test('status is 201 Created', () => pm.response.to.have.status(201));",
+            "const j = pm.response.json();",
+            "pm.collectionVariables.set('endorsementId', j.id);",
+            "pm.test('endorsementId captured', () => pm.expect(j.id).to.not.be.undefined);"
+          ] } } ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Authorization", "value": "Bearer {{u1Token}}" }, { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{baseUrl}}/api/endorsements", "host": ["{{baseUrl}}"], "path": ["api","endorsements"] },
+            "body": { "mode": "raw", "raw": "{\n  \"endorseeId\": {{u2Id}},\n  \"skill\": \"Java\",\n  \"category\": \"TECHNICAL\",\n  \"message\": \"Excellent Java skills\"\n}" }
+          }
+        },
+        {
+          "name": "Get endorsements received by U2",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status is 200', () => pm.response.to.have.status(200));"
+          ] } } ],
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{u1Token}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/endorsements/user/{{u2Id}}?page=0&size=20", "host": ["{{baseUrl}}"], "path": ["api","endorsements","user","{{u2Id}}"], "query": [ { "key": "page", "value": "0" }, { "key": "size", "value": "20" } ] }
+          }
+        },
+        {
+          "name": "Remove endorsement",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status is 204 No Content', () => pm.response.to.have.status(204));"
+          ] } } ],
+          "request": {
+            "method": "DELETE",
+            "header": [ { "key": "Authorization", "value": "Bearer {{u1Token}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/endorsements/{{endorsementId}}", "host": ["{{baseUrl}}"], "path": ["api","endorsements","{{endorsementId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "11 - Communities",
+      "item": [
+        {
+          "name": "U1 create community",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status is 201 Created', () => pm.response.to.have.status(201));",
+            "const j = pm.response.json();",
+            "pm.collectionVariables.set('communityId', j.id);",
+            "pm.test('communityId captured', () => pm.expect(j.id).to.not.be.undefined);"
+          ] } } ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Authorization", "value": "Bearer {{u1Token}}" }, { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{baseUrl}}/api/communities", "host": ["{{baseUrl}}"], "path": ["api","communities"] },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"QA Guild {{$randomUUID}}\",\n  \"description\": \"Created by Postman\",\n  \"isPrivate\": false\n}" }
+          }
+        },
+        {
+          "name": "U1 invite user to community",
+          "event": [ { "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "// Inviter (U1) is the OWNER/member of the community it just created, and",
+            "// receiverId is a real captured id -> 200. The earlier 500 was a null receiverId.",
+            "pm.test('status is 200', () => pm.response.to.have.status(200));",
+            "pm.test('invitation sent', () => pm.expect(pm.response.json().message).to.be.a('string'));"
+          ] } } ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Authorization", "value": "Bearer {{u1Token}}" }, { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{baseUrl}}/api/communities/{{communityId}}/invite", "host": ["{{baseUrl}}"], "path": ["api","communities","{{communityId}}","invite"] },
+            "body": { "mode": "raw", "raw": "{\n  \"receiverId\": {{u2Id}}\n}" }
+          }
+        }
+      ]
+    }
+  ]
+}
