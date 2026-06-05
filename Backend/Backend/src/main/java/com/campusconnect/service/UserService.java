@@ -49,14 +49,19 @@ public class UserService {
         userRepository.save(user);
         if (req.getSkills() != null) {
             userSkillRepository.deleteByUserId(id);
+            Set<String> unique = new LinkedHashSet<>();
             for (String skill : req.getSkills()) {
+                if (skill != null && !skill.isBlank()) {
+                    unique.add(skill.trim());
+                }
+            }
+            for (String skill : unique) {
                 userSkillRepository.save(UserSkill.builder().user(user).skillName(skill).build());
             }
         }
         checkProfileComplete(user);
         return mapToDTO(user, id);
     }
-
     private void checkProfileComplete(User user) {
         try {
             if (achievementService == null) return;
